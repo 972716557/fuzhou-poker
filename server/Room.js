@@ -63,9 +63,17 @@ export class Room {
         if (active.length <= 1 && this.engine.phase === PHASE.BETTING) {
           const winner = active[0]
           if (winner) {
-            winner.chips += this.engine.pot
+            const allPlayers = this.engine.players.filter(p => p.totalBet > 0)
+            const awarded = this.engine.settleSidePot(winner, allPlayers)
+            for (const p of allPlayers) {
+              if (p.totalBet > 0) {
+                p.chips += p.totalBet
+                this.engine.addLog(`${p.name} 退还 ${p.totalBet}（超出赢家上限）`)
+                p.totalBet = 0
+              }
+            }
             this.engine.winnerId = winner.id
-            this.engine.addLog(`${winner.name} 赢得底池 ${this.engine.pot}！`)
+            this.engine.addLog(`${winner.name} 赢得 ${awarded}！`)
           }
           this.engine.pot = 0
           this.engine.phase = PHASE.SETTLEMENT
@@ -175,7 +183,6 @@ export class Room {
       case C2S.PLAYER_CALL_BET:
       case C2S.PLAYER_KICK:
       case C2S.PLAYER_FOLD:
-      case C2S.PLAYER_COMPARE:
       case C2S.PLAYER_SHOWDOWN: {
         if (player.isSpectator) return
         this.engine.processAction(player.id, msg.type, msg.payload || {})

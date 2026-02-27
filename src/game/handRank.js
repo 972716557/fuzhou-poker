@@ -25,7 +25,8 @@ function isZhiZun(card1, card2) {
  */
 function isPair(card1, card2) {
   if (card1.type !== CARD_TYPE.NORMAL || card2.type !== CARD_TYPE.NORMAL) return false
-  return card1.value === card2.value
+  // 同 pairRank 且不同 id 才算一对（同点数不同颜色的两对不互为对子）
+  return card1.value === card2.value && card1.pairRank === card2.pairRank && card1.id !== card2.id
 }
 
 /**
@@ -75,8 +76,8 @@ export function getHandRank(card1, card2) {
   if (isPair(card1, card2)) {
     const pairNames = {
       Q: '天', 2: '地', 8: '人', 4: '和',
-      10: '梅/长三', 6: '长二', 7: '短',
-      J: '幺', 5: '五', 9: '九', A: '幺A', 3: '三', K: 'K对',
+      10: '梅/长三', 6: '长二/红六', 7: '短/红七',
+      J: '幺', 5: '五', 9: '九',
     }
     return {
       level: 2,

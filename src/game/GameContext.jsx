@@ -144,10 +144,6 @@ export function GameProvider({ children }) {
     send({ type: C2S.PLAYER_FOLD, payload: {} })
   }, [send])
 
-  const compare = useCallback((targetPlayerId) => {
-    send({ type: C2S.PLAYER_COMPARE, payload: { targetPlayerId } })
-  }, [send])
-
   const showdown = useCallback(() => {
     send({ type: C2S.PLAYER_SHOWDOWN, payload: {} })
   }, [send])
@@ -181,7 +177,6 @@ export function GameProvider({ children }) {
       callBet,
       kick,
       fold,
-      compare,
       showdown,
       dealAnimDone,
     },

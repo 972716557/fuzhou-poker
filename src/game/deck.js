@@ -41,64 +41,68 @@ export const PAIR_NAMES = {
  */
 export const FULL_DECK = [
   // 至尊 - 大王小王
-  { id: 'joker_big', name: '大王', suit: 'joker', value: 'BIG', points: 0, pairRank: -1, type: CARD_TYPE.JOKER_BIG, display: '🃏', color: 'red' },
-  { id: 'joker_small', name: '小王', suit: 'joker', value: 'SMALL', points: 0, pairRank: -1, type: CARD_TYPE.JOKER_SMALL, display: '🂿', color: 'black' },
+  { id: 'joker_big',   name: '大王', suit: 'joker',   value: 'BIG',   points: 0, pairRank: -1, type: CARD_TYPE.JOKER_BIG,   display: '大', color: 'red'   },
+  { id: 'joker_small', name: '小王', suit: 'joker',   value: 'SMALL', points: 0, pairRank: -1, type: CARD_TYPE.JOKER_SMALL, display: '小', color: 'black' },
 
-  // 天 - QQ
-  { id: 'q_spade', name: 'Q♠', suit: 'spade', value: 'Q', points: 0, pairRank: 15, type: CARD_TYPE.NORMAL, display: 'Q', color: 'black' },
-  { id: 'q_heart', name: 'Q♥', suit: 'heart', value: 'Q', points: 0, pairRank: 15, type: CARD_TYPE.NORMAL, display: 'Q', color: 'red' },
+  // 天 - 红QQ (♥♦)
+  { id: 'q_heart',   name: 'Q♥', suit: 'heart',   value: 'Q', points: 0, pairRank: 15, type: CARD_TYPE.NORMAL, display: 'Q', color: 'red' },
+  { id: 'q_diamond', name: 'Q♦', suit: 'diamond', value: 'Q', points: 0, pairRank: 15, type: CARD_TYPE.NORMAL, display: 'Q', color: 'red' },
 
-  // 地 - 22
-  { id: '2_spade', name: '2♠', suit: 'spade', value: '2', points: 2, pairRank: 14, type: CARD_TYPE.NORMAL, display: '2', color: 'black' },
-  { id: '2_heart', name: '2♥', suit: 'heart', value: '2', points: 2, pairRank: 14, type: CARD_TYPE.NORMAL, display: '2', color: 'red' },
+  // 地 - 红22 (♥♦)
+  { id: '2_heart',   name: '2♥', suit: 'heart',   value: '2', points: 2, pairRank: 14, type: CARD_TYPE.NORMAL, display: '2', color: 'red' },
+  { id: '2_diamond', name: '2♦', suit: 'diamond', value: '2', points: 2, pairRank: 14, type: CARD_TYPE.NORMAL, display: '2', color: 'red' },
 
-  // 人 - 88
-  { id: '8_spade', name: '8♠', suit: 'spade', value: '8', points: 8, pairRank: 13, type: CARD_TYPE.NORMAL, display: '8', color: 'black' },
-  { id: '8_heart', name: '8♥', suit: 'heart', value: '8', points: 8, pairRank: 13, type: CARD_TYPE.NORMAL, display: '8', color: 'red' },
+  // 人 - 红88 (♥♦)
+  { id: '8_heart',   name: '8♥', suit: 'heart',   value: '8', points: 8, pairRank: 13, type: CARD_TYPE.NORMAL, display: '8', color: 'red' },
+  { id: '8_diamond', name: '8♦', suit: 'diamond', value: '8', points: 8, pairRank: 13, type: CARD_TYPE.NORMAL, display: '8', color: 'red' },
 
-  // 和 - 44
-  { id: '4_spade', name: '4♠', suit: 'spade', value: '4', points: 4, pairRank: 12, type: CARD_TYPE.NORMAL, display: '4', color: 'black' },
-  { id: '4_heart', name: '4♥', suit: 'heart', value: '4', points: 4, pairRank: 12, type: CARD_TYPE.NORMAL, display: '4', color: 'red' },
+  // 和 - 红44 (♥♦)
+  { id: '4_heart',   name: '4♥', suit: 'heart',   value: '4', points: 4, pairRank: 12, type: CARD_TYPE.NORMAL, display: '4', color: 'red' },
+  { id: '4_diamond', name: '4♦', suit: 'diamond', value: '4', points: 4, pairRank: 12, type: CARD_TYPE.NORMAL, display: '4', color: 'red' },
 
-  // 梅 - 10-10 (红)
-  { id: '10_heart', name: '10♥', suit: 'heart', value: '10', points: 0, pairRank: 11, type: CARD_TYPE.NORMAL, display: '10', color: 'red' },
-  { id: '10_diamond', name: '10♦', suit: 'diamond', value: '10', points: 0, pairRank: 11, type: CARD_TYPE.NORMAL, display: '10', color: 'red' },
+  // 梅 - 黑10-10 (♠♣)
+  { id: '10_spade', name: '10♠', suit: 'spade', value: '10', points: 0, pairRank: 11, type: CARD_TYPE.NORMAL, display: '10', color: 'black' },
+  { id: '10_club',  name: '10♣', suit: 'club',  value: '10', points: 0, pairRank: 11, type: CARD_TYPE.NORMAL, display: '10', color: 'black' },
 
-  // 长三 - 10-10 (黑)
-  { id: '10_spade', name: '10♠', suit: 'spade', value: '10', points: 0, pairRank: 10, type: CARD_TYPE.NORMAL, display: '10', color: 'black' },
-  { id: '10_club', name: '10♣', suit: 'club', value: '10', points: 0, pairRank: 10, type: CARD_TYPE.NORMAL, display: '10', color: 'black' },
+  // 长三 - 红10-10 (♥♦)
+  { id: '10_heart',   name: '10♥', suit: 'heart',   value: '10', points: 0, pairRank: 10, type: CARD_TYPE.NORMAL, display: '10', color: 'red' },
+  { id: '10_diamond', name: '10♦', suit: 'diamond', value: '10', points: 0, pairRank: 10, type: CARD_TYPE.NORMAL, display: '10', color: 'red' },
 
-  // 长二 - 66
+  // 长二 - 黑66 (♠♣)
   { id: '6_spade', name: '6♠', suit: 'spade', value: '6', points: 6, pairRank: 9, type: CARD_TYPE.NORMAL, display: '6', color: 'black' },
-  { id: '6_heart', name: '6♥', suit: 'heart', value: '6', points: 6, pairRank: 9, type: CARD_TYPE.NORMAL, display: '6', color: 'red' },
+  { id: '6_club',  name: '6♣', suit: 'club',  value: '6', points: 6, pairRank: 9, type: CARD_TYPE.NORMAL, display: '6', color: 'black' },
 
-  // 短 - 77
-  { id: '7_spade', name: '7♠', suit: 'spade', value: '7', points: 7, pairRank: 8, type: CARD_TYPE.NORMAL, display: '7', color: 'black' },
-  { id: '7_heart', name: '7♥', suit: 'heart', value: '7', points: 7, pairRank: 8, type: CARD_TYPE.NORMAL, display: '7', color: 'red' },
+  // 幺 - 黑JJ (♠♣)
+  { id: 'j_spade', name: 'J♠', suit: 'spade', value: 'J', points: 1, pairRank: 8, type: CARD_TYPE.NORMAL, display: 'J', color: 'black' },
+  { id: 'j_club',  name: 'J♣', suit: 'club',  value: 'J', points: 1, pairRank: 8, type: CARD_TYPE.NORMAL, display: 'J', color: 'black' },
 
-  // 幺五 - J5 组合  (不是对子，但属于特殊组合牌)
-  { id: 'j_spade', name: 'J♠', suit: 'spade', value: 'J', points: 1, pairRank: 7, type: CARD_TYPE.NORMAL, display: 'J', color: 'black' },
-  { id: 'j_heart', name: 'J♥', suit: 'heart', value: 'J', points: 1, pairRank: 7, type: CARD_TYPE.NORMAL, display: 'J', color: 'red' },
+  // 短 - 黑77 (♠♣)
+  { id: '7_spade', name: '7♠', suit: 'spade', value: '7', points: 7, pairRank: 7, type: CARD_TYPE.NORMAL, display: '7', color: 'black' },
+  { id: '7_club',  name: '7♣', suit: 'club',  value: '7', points: 7, pairRank: 7, type: CARD_TYPE.NORMAL, display: '7', color: 'black' },
 
-  // 5
-  { id: '5_spade', name: '5♠', suit: 'spade', value: '5', points: 5, pairRank: 6, type: CARD_TYPE.NORMAL, display: '5', color: 'black' },
-  { id: '5_heart', name: '5♥', suit: 'heart', value: '5', points: 5, pairRank: 6, type: CARD_TYPE.NORMAL, display: '5', color: 'red' },
+  // 红77 (♥♦)
+  { id: '7_heart',   name: '7♥', suit: 'heart',   value: '7', points: 7, pairRank: 6, type: CARD_TYPE.NORMAL, display: '7', color: 'red' },
+  { id: '7_diamond', name: '7♦', suit: 'diamond', value: '7', points: 7, pairRank: 6, type: CARD_TYPE.NORMAL, display: '7', color: 'red' },
 
-  // 9
-  { id: '9_spade', name: '9♠', suit: 'spade', value: '9', points: 9, pairRank: 5, type: CARD_TYPE.NORMAL, display: '9', color: 'black' },
-  { id: '9_heart', name: '9♥', suit: 'heart', value: '9', points: 9, pairRank: 5, type: CARD_TYPE.NORMAL, display: '9', color: 'red' },
+  // 红66 (♥♦)
+  { id: '6_heart',   name: '6♥', suit: 'heart',   value: '6', points: 6, pairRank: 5, type: CARD_TYPE.NORMAL, display: '6', color: 'red' },
+  { id: '6_diamond', name: '6♦', suit: 'diamond', value: '6', points: 6, pairRank: 5, type: CARD_TYPE.NORMAL, display: '6', color: 'red' },
 
-  // A
-  { id: 'a_spade', name: 'A♠', suit: 'spade', value: 'A', points: 1, pairRank: 4, type: CARD_TYPE.NORMAL, display: 'A', color: 'black' },
-  { id: 'a_heart', name: 'A♥', suit: 'heart', value: 'A', points: 1, pairRank: 4, type: CARD_TYPE.NORMAL, display: 'A', color: 'red' },
+  // 黑55 (♠♣)
+  { id: '5_spade', name: '5♠', suit: 'spade', value: '5', points: 5, pairRank: 4, type: CARD_TYPE.NORMAL, display: '5', color: 'black' },
+  { id: '5_club',  name: '5♣', suit: 'club',  value: '5', points: 5, pairRank: 4, type: CARD_TYPE.NORMAL, display: '5', color: 'black' },
 
-  // 3
-  { id: '3_spade', name: '3♠', suit: 'spade', value: '3', points: 3, pairRank: 3, type: CARD_TYPE.NORMAL, display: '3', color: 'black' },
-  { id: '3_heart', name: '3♥', suit: 'heart', value: '3', points: 3, pairRank: 3, type: CARD_TYPE.NORMAL, display: '3', color: 'red' },
+  // 九 - 黑99 (♠♣)
+  { id: '9_spade', name: '9♠', suit: 'spade', value: '9', points: 9, pairRank: 3, type: CARD_TYPE.NORMAL, display: '9', color: 'black' },
+  { id: '9_club',  name: '9♣', suit: 'club',  value: '9', points: 9, pairRank: 3, type: CARD_TYPE.NORMAL, display: '9', color: 'black' },
 
-  // K (额外的两张填满32张)
-  { id: 'k_spade', name: 'K♠', suit: 'spade', value: 'K', points: 0, pairRank: 2, type: CARD_TYPE.NORMAL, display: 'K', color: 'black' },
-  { id: 'k_heart', name: 'K♥', suit: 'heart', value: 'K', points: 0, pairRank: 2, type: CARD_TYPE.NORMAL, display: 'K', color: 'red' },
+  // 黑88 (♠♣)
+  { id: '8_spade', name: '8♠', suit: 'spade', value: '8', points: 8, pairRank: 2, type: CARD_TYPE.NORMAL, display: '8', color: 'black' },
+  { id: '8_club',  name: '8♣', suit: 'club',  value: '8', points: 8, pairRank: 2, type: CARD_TYPE.NORMAL, display: '8', color: 'black' },
+
+  // 黑44 (♠♣)
+  { id: '4_spade', name: '4♠', suit: 'spade', value: '4', points: 4, pairRank: 1, type: CARD_TYPE.NORMAL, display: '4', color: 'black' },
+  { id: '4_club',  name: '4♣', suit: 'club',  value: '4', points: 4, pairRank: 1, type: CARD_TYPE.NORMAL, display: '4', color: 'black' },
 ]
 
 /**

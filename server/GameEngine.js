@@ -32,6 +32,7 @@ export class GameEngine {
     this.startPlayerIndex = 0
     this.callBetCount = 0
     this.lastAction = null
+    this.lastRaiserId = null  // 最后一个主动提高注额的玩家 id
     this.players = [] // 由 Room 设置
   }
 
@@ -97,6 +98,7 @@ export class GameEngine {
       p.hand = hands[i]
       p.chips -= this.config.baseBlind
       p.currentBet = this.config.baseBlind
+      p.totalBet = this.config.baseBlind
     })
 
     this.pot = this.config.baseBlind * this.players.length
@@ -106,6 +108,8 @@ export class GameEngine {
     this.dealingState = null
     this.callBetCount = 0
     this.lastAction = null
+    // 底注相当于起始玩家定注，他是第一个"叫"的人
+    this.lastRaiserId = this.players[startPlayerIndex]?.id || null
 
     this.addLog(`发牌完毕！底注 ${this.config.baseBlind}`)
   }
@@ -142,17 +146,20 @@ export class GameEngine {
 
     switch (actionType) {
       case 'c2s:bet': {
+        // 跟注：不改变 lastRaiserId
         const betAmount = currentBet
         let betLabel = '跟注'
         if (player.chips < betAmount) {
           pot += player.chips
           player.currentBet += player.chips
+          player.totalBet += player.chips
           player.chips = 0
           betLabel = 'All in'
           this.addLog(`${player.name} All in (筹码不足)`)
         } else {
           player.chips -= betAmount
           player.currentBet += betAmount
+          player.totalBet += betAmount
           pot += betAmount
           this.addLog(`${player.name} 跟注 ${betAmount}`)
         }
@@ -161,31 +168,36 @@ export class GameEngine {
       }
 
       case 'c2s:raise': {
+        // 加注：成为新的 lastRaiser
         const raiseAmount = payload.amount || currentBet * 2
-        const actualAmount = raiseAmount
-        if (player.chips < actualAmount) {
+        if (player.chips < raiseAmount) {
           pot += player.chips
           player.currentBet += player.chips
+          player.totalBet += player.chips
           player.chips = 0
           this.addLog(`${player.name} 全押加注`)
         } else {
-          player.chips -= actualAmount
-          player.currentBet += actualAmount
-          pot += actualAmount
+          player.chips -= raiseAmount
+          player.currentBet += raiseAmount
+          player.totalBet += raiseAmount
+          pot += raiseAmount
           currentBet = raiseAmount
           this.addLog(`${player.name} 加注到 ${raiseAmount}`)
         }
+        this.lastRaiserId = playerId
         this.lastAction = { playerId, label: '加注', ts: Date.now() }
         break
       }
 
       case 'c2s:call_bet': {
+        // 叫牌（恰提/带上）：成为新的 lastRaiser
         const newBet = currentBet * 2
         const payAmount = newBet
         let callLabel
         if (player.chips < payAmount) {
           pot += player.chips
           player.currentBet += player.chips
+          player.totalBet += player.chips
           player.chips = 0
           currentBet = newBet
           callLabel = 'All in'
@@ -193,17 +205,20 @@ export class GameEngine {
         } else {
           player.chips -= payAmount
           player.currentBet += payAmount
+          player.totalBet += payAmount
           pot += payAmount
           currentBet = newBet
           callLabel = this.callBetCount === 0 ? '恰提' : '带上'
           this.addLog(`${player.name} ${callLabel}！下注 ${payAmount}`)
         }
         this.callBetCount++
+        this.lastRaiserId = playerId
         this.lastAction = { playerId, label: callLabel, ts: Date.now() }
         break
       }
 
       case 'c2s:kick': {
+        // 踢脚：成为新的 lastRaiser
         const kicks = Math.floor(payload.kicks || 1)
         if (kicks < 1) return false
         const kickAmount = kicks * currentBet
@@ -217,6 +232,7 @@ export class GameEngine {
         if (player.chips < payAmount) {
           pot += player.chips
           player.currentBet += player.chips
+          player.totalBet += player.chips
           player.chips = 0
           currentBet = newBet
           kickLabel = 'All in'
@@ -224,10 +240,12 @@ export class GameEngine {
         } else {
           player.chips -= payAmount
           player.currentBet += payAmount
+          player.totalBet += payAmount
           pot += payAmount
           currentBet = newBet
           this.addLog(`${player.name} 踢${kicks}脚！下注 ${payAmount}，跟注额升至 ${newBet}`)
         }
+        this.lastRaiserId = playerId
         this.lastAction = { playerId, label: kickLabel, ts: Date.now() }
         break
       }
@@ -237,51 +255,11 @@ export class GameEngine {
         player.isActive = false
         this.addLog(`${player.name} 弃牌`)
         this.lastAction = { playerId, label: '弃牌', ts: Date.now() }
-        break
-      }
-
-      case 'c2s:compare': {
-        if (bettingRound < this.config.minRoundsToCompare) {
-          this.addLog(`还未到可比牌轮数（需 ${this.config.minRoundsToCompare} 轮）`)
-          this.pot = pot
-          this.currentBet = currentBet
-          return false
+        // 如果弃牌的人恰好是 lastRaiser，把 lastRaiserId 转移给下一个活跃玩家
+        if (this.lastRaiserId === playerId) {
+          const nextActive = this.getNextActiveIndex(playerIndex)
+          this.lastRaiserId = nextActive !== -1 ? this.players[nextActive]?.id : null
         }
-
-        const target = this.players.find(p => p.id === payload.targetPlayerId)
-        if (!target || target.hasFolded || !target.isActive) return false
-
-        const compareCost = currentBet
-        player.chips -= compareCost
-        pot += compareCost
-        this.addLog(`${player.name} 向 ${target.name} 发起比牌`)
-
-        const result = compareHands(player.hand[0], player.hand[1], target.hand[0], target.hand[1])
-
-        if (result > 0) {
-          target.hasFolded = true
-          target.isActive = false
-          this.addLog(`比牌结果：${player.name} 赢！${target.name} 出局`)
-        } else if (result < 0) {
-          player.hasFolded = true
-          player.isActive = false
-          this.addLog(`比牌结果：${target.name} 赢！${player.name} 出局`)
-        } else {
-          // 同牌：先叫者（位置靠前者）大
-          const targetIndex = this.players.findIndex(p => p.id === target.id)
-          const playerPriority = this.getPositionPriority(playerIndex)
-          const targetPriority = this.getPositionPriority(targetIndex)
-          if (playerPriority < targetPriority) {
-            target.hasFolded = true
-            target.isActive = false
-            this.addLog(`比牌结果：同牌！${player.name} 位置靠前，${target.name} 出局`)
-          } else {
-            player.hasFolded = true
-            player.isActive = false
-            this.addLog(`比牌结果：同牌！${target.name} 位置靠前，${player.name} 出局`)
-          }
-        }
-        this.lastAction = { playerId, label: '比牌', ts: Date.now() }
         break
       }
 
@@ -304,17 +282,37 @@ export class GameEngine {
     if (activePlayers.length <= 1) {
       const winner = activePlayers[0]
       if (winner) {
-        winner.chips += this.pot
+        const allPlayers = this.players.filter(p => p.totalBet > 0)
+        const awarded = this.settleSidePot(winner, allPlayers)
+        for (const p of allPlayers) {
+          if (p.totalBet > 0) {
+            p.chips += p.totalBet
+            this.addLog(`${p.name} 退还 ${p.totalBet}（超出赢家上限）`)
+            p.totalBet = 0
+          }
+        }
         this.winnerId = winner.id
-        this.addLog(`${winner.name} 赢得底池 ${this.pot}！`)
+        this.addLog(`${winner.name} 赢得 ${awarded}！`)
       }
       this.pot = 0
       this.phase = PHASE.SETTLEMENT
       return true
     }
 
-    // 移到下一个玩家
+    // 移到下一个活跃玩家
     const nextIndex = this.getNextActiveIndex(playerIndex)
+    const nextPlayer = this.players[nextIndex]
+
+    // 回合结束判断：下一个要行动的人就是 lastRaiser，说明其他人都已响应
+    // lastRaiser 是"最后一个主动提高注额的人"，他不需要再行动
+    if (nextPlayer && nextPlayer.id === this.lastRaiserId) {
+      // 所有人都响应了，进入亮牌
+      this.addLog('所有人已响应，自动亮牌')
+      this.doShowdown()
+      return true
+    }
+
+    // 更新圈数（仅用于显示）
     if (nextIndex <= playerIndex) {
       this.bettingRound = bettingRound + 1
     }
@@ -323,38 +321,84 @@ export class GameEngine {
     return true
   }
 
+  /**
+   * Side pot 结算：赢家只能从每位玩家处赢走不超过自己 totalBet 的部分，
+   * 超出部分退还给对应玩家。
+   *
+   * 示例：A踢1脚共出了20，B带上出了40，A牌大。
+   *   A 最多从每人处赢 20，从B处赢20，剩余20退还B。
+   */
+  settleSidePot(winner, allPlayers) {
+    const cap = winner.totalBet  // 赢家本局累计出注上限
+    let winnings = 0
+    for (const p of allPlayers) {
+      const take = Math.min(p.totalBet, cap)
+      winnings += take
+      p.totalBet -= take  // 已被赢走的部分扣除
+    }
+    winner.chips += winnings
+    winner.totalBet = 0
+    return winnings
+  }
+
+  /** 找出最强玩家（按 compareHands + 位置优先级） */
+  findBestPlayer(players) {
+    let best = players[0]
+    for (let i = 1; i < players.length; i++) {
+      const p = players[i]
+      const cmp = compareHands(p.hand[0], p.hand[1], best.hand[0], best.hand[1])
+      if (cmp > 0) {
+        best = p
+      } else if (cmp === 0) {
+        const pIdx = this.players.findIndex(x => x.id === p.id)
+        const bIdx = this.players.findIndex(x => x.id === best.id)
+        if (this.getPositionPriority(pIdx) < this.getPositionPriority(bIdx)) {
+          best = p
+        }
+      }
+    }
+    return best
+  }
+
   /** 摊牌 */
   doShowdown() {
     const activePlayers = this.getActivePlayers()
     this.addLog('--- 摊牌 ---')
-
     activePlayers.forEach(p => {
       const rank = getHandRank(p.hand[0], p.hand[1])
       this.addLog(`${p.name}: ${p.hand[0].name} + ${p.hand[1].name} = ${rank.name}`)
     })
 
-    let winnerIdx = 0
-    for (let i = 1; i < activePlayers.length; i++) {
-      const cmp = compareHands(
-        activePlayers[i].hand[0], activePlayers[i].hand[1],
-        activePlayers[winnerIdx].hand[0], activePlayers[winnerIdx].hand[1],
-      )
-      if (cmp > 0) {
-        winnerIdx = i
-      } else if (cmp === 0) {
-        // 同牌：先叫者（位置靠前者）大
-        const challengerPlayerIndex = this.players.findIndex(p => p.id === activePlayers[i].id)
-        const currentWinnerPlayerIndex = this.players.findIndex(p => p.id === activePlayers[winnerIdx].id)
-        if (this.getPositionPriority(challengerPlayerIndex) < this.getPositionPriority(currentWinnerPlayerIndex)) {
-          winnerIdx = i
-        }
+    // 所有参与结算的玩家（包括已弃牌的，他们的 totalBet 也要参与分配）
+    const allPlayers = this.players.filter(p => p.totalBet > 0)
+
+    // 按 totalBet 从小到大，依次让最强者赢走自己上限内的底池
+    const remaining = [...activePlayers]
+    let totalAwarded = 0
+
+    while (remaining.length > 0) {
+      const winner = this.findBestPlayer(remaining)
+      const awarded = this.settleSidePot(winner, allPlayers)
+      if (awarded > 0) {
+        this.addLog(`${winner.name} 赢得 ${awarded}`)
+        totalAwarded += awarded
+      }
+      remaining.splice(remaining.indexOf(winner), 1)
+
+      // 如果所有底池都分完了，退出
+      if (allPlayers.every(p => p.totalBet === 0)) break
+    }
+
+    // 理论上不应有剩余，保险起见退还
+    for (const p of allPlayers) {
+      if (p.totalBet > 0) {
+        p.chips += p.totalBet
+        this.addLog(`${p.name} 退还 ${p.totalBet}（超出赢家上限）`)
+        p.totalBet = 0
       }
     }
 
-    const winner = activePlayers[winnerIdx]
-    winner.chips += this.pot
-    this.winnerId = winner.id
-    this.addLog(`${winner.name} 赢得底池 ${this.pot}！`)
+    this.winnerId = this.findBestPlayer(activePlayers).id
     this.pot = 0
     this.phase = PHASE.SETTLEMENT
   }
@@ -369,6 +413,7 @@ export class GameEngine {
       bettingRound: this.bettingRound,
       currentPlayerId: this.getCurrentPlayerId(),
       dealerPlayerId: this.players[this.dealerIndex]?.id || null,
+      lastRaiserId: this.lastRaiserId,
       config: this.config,
       winnerId: this.winnerId,
       lastAction: this.lastAction,

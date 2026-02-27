@@ -13,7 +13,6 @@ export const C2S = {
   PLAYER_CALL_BET:'c2s:call_bet',
   PLAYER_KICK:    'c2s:kick',
   PLAYER_FOLD:    'c2s:fold',
-  PLAYER_COMPARE: 'c2s:compare',
   PLAYER_SHOWDOWN:'c2s:showdown',
   NEXT_ROUND:     'c2s:next_round',
   DEAL_ANIM_DONE: 'c2s:deal_anim_done',

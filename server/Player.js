@@ -16,6 +16,7 @@ export class Player {
     this.hand = null
     this.hasFolded = false
     this.currentBet = 0
+    this.totalBet = 0   // 本局累计出注（用于 side pot 结算）
     this.isActive = true
   }
 
@@ -23,6 +24,7 @@ export class Player {
     this.hand = null
     this.hasFolded = false
     this.currentBet = 0
+    this.totalBet = 0
     this.isActive = true
   }
 

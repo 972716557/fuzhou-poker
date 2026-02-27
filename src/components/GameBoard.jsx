@@ -9,10 +9,14 @@ import { PHASE } from '../../shared/constants.js'
 
 function calculateSeatPositions(count, width, height) {
   const positions = []
+  const isMobile = width < 640
+  // 手机上顶部留给状态栏(~40px)，底部留给操作面板(~100px)，中心上移
+  const offsetY = isMobile ? -30 : 0
   const centerX = width / 2
-  const centerY = height / 2
-  const radiusX = width * 0.40
-  const radiusY = height * 0.36
+  const centerY = height / 2 + offsetY
+  const radiusX = width * (isMobile ? 0.38 : 0.40)
+  // 手机竖屏高度充裕，但底部有操作区，纵向半径相应缩小
+  const radiusY = height * (isMobile ? 0.28 : 0.36)
   for (let i = 0; i < count; i++) {
     const angle = (2 * Math.PI * i) / count - Math.PI / 2
     positions.push({
@@ -58,12 +62,12 @@ export default function GameBoard() {
   return (
     <div className="relative w-full h-full overflow-hidden bg-gray-900">
       {/* 背景桌面 */}
-      <div className="absolute inset-0 flex items-center justify-center">
+      <div className="absolute inset-0 flex items-center justify-center" style={{ paddingBottom: tableWidth < 640 ? 60 : 0 }}>
         <div
           className="rounded-[50%] border-4 border-amber-900/60 shadow-2xl"
           style={{
-            width: tableWidth * 0.75,
-            height: tableHeight * 0.65,
+            width: tableWidth * (tableWidth < 640 ? 0.78 : 0.75),
+            height: tableHeight * (tableWidth < 640 ? 0.50 : 0.65),
             background: 'radial-gradient(ellipse at center, #1a6b35 0%, #145528 50%, #0f3d1d 100%)',
             boxShadow: '0 0 60px rgba(26, 92, 46, 0.3), inset 0 0 80px rgba(0,0,0,0.3)',
           }}
