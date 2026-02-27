@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 
-const WS_URL = import.meta.env.DEV
-  ? `ws://${window.location.hostname}:4567`
-  : `ws://${window.location.hostname}:4567`
+const WS_URL = import.meta.env.VITE_WS_URL
+  || (import.meta.env.DEV ? `ws://${window.location.hostname}:4567` : `wss://${window.location.host}`)
 
 export function useWebSocket() {
   const wsRef = useRef(null)
