@@ -2,7 +2,9 @@ import http from 'http'
 import { WebSocketServer } from 'ws'
 import { RoomManager } from './RoomManager.js'
 
-const PORT = process.env.WS_PORT || 4567
+const PORT = process.env.PORT || process.env.WS_PORT || 4567
+const HOST = '0.0.0.0'
+
 const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'application/json' })
   res.end(JSON.stringify({ status: 'ok', rooms: roomManager.rooms.size }))
@@ -42,6 +44,6 @@ setInterval(() => {
   })
 }, 15000)
 
-server.listen(PORT, () => {
-  console.log(`🃏 抚州32张 WebSocket 服务端运行在 ws://localhost:${PORT}`)
+server.listen(PORT, HOST, () => {
+  console.log(`🃏 抚州32张 WebSocket 服务端运行在 ws://${HOST}:${PORT}`)
 })
