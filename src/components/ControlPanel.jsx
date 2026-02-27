@@ -7,7 +7,6 @@ export default function ControlPanel() {
   const { gameState, roomState, myPlayer, isMyTurn, isSpectator, actions } = useGame()
 
   const [showCompareMenu, setShowCompareMenu] = useState(false)
-  const [raiseMultiplier, setRaiseMultiplier] = useState(2)
 
   const phase = gameState?.phase || PHASE.WAITING
   const players = gameState?.players || []
@@ -85,9 +84,8 @@ export default function ControlPanel() {
   }
 
   const canCompare = bettingRound >= (config.minRoundsToCompare || 3)
-  const betAmount = myPlayer.hasLooked ? currentBet * 2 : currentBet
-  const raiseAmount = currentBet * raiseMultiplier
-  const actualRaise = myPlayer.hasLooked ? raiseAmount * 2 : raiseAmount
+  const betAmount = currentBet
+  const callBetAmount = currentBet * 2
 
   const compareTargets = players.filter(
     p => p.id !== roomState.playerId && p.isActive && !p.hasFolded
@@ -103,18 +101,6 @@ export default function ControlPanel() {
       </div>
 
       <div className="flex gap-2 bg-black/70 backdrop-blur rounded-xl px-4 py-3 shadow-2xl">
-        {/* 看牌 */}
-        {!myPlayer.hasLooked && (
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={actions.look}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 font-bold text-sm"
-          >
-            看牌
-          </motion.button>
-        )}
-
         {/* 跟注 */}
         <motion.button
           whileHover={{ scale: 1.05 }}
@@ -125,27 +111,15 @@ export default function ControlPanel() {
           跟注 {betAmount}
         </motion.button>
 
-        {/* 加注 */}
-        <div className="flex items-center gap-1">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => actions.raise(raiseAmount)}
-            className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-500 font-bold text-sm"
-          >
-            加注 {actualRaise}
-          </motion.button>
-          <select
-            value={raiseMultiplier}
-            onChange={(e) => setRaiseMultiplier(Number(e.target.value))}
-            className="bg-gray-800 text-white text-xs rounded px-1 py-2 border border-gray-600"
-          >
-            <option value={2}>x2</option>
-            <option value={3}>x3</option>
-            <option value={4}>x4</option>
-            <option value={5}>x5</option>
-          </select>
-        </div>
+        {/* 叫牌 */}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={actions.callBet}
+          className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-500 font-bold text-sm"
+        >
+          叫牌 {callBetAmount}
+        </motion.button>
 
         {/* 比牌 */}
         <div className="relative">

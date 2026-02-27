@@ -40,7 +40,6 @@ export default function GameBoard() {
     ...p,
     seatIndex: i,
     hand: null,
-    hasLooked: false,
     hasFolded: false,
     currentBet: 0,
     isActive: true,

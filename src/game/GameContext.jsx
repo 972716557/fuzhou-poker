@@ -124,16 +124,16 @@ export function GameProvider({ children }) {
     send({ type: C2S.NEXT_ROUND, payload: {} })
   }, [send])
 
-  const look = useCallback(() => {
-    send({ type: C2S.PLAYER_LOOK, payload: {} })
-  }, [send])
-
   const bet = useCallback(() => {
     send({ type: C2S.PLAYER_BET, payload: {} })
   }, [send])
 
   const raise = useCallback((amount) => {
     send({ type: C2S.PLAYER_RAISE, payload: { amount } })
+  }, [send])
+
+  const callBet = useCallback(() => {
+    send({ type: C2S.PLAYER_CALL_BET, payload: {} })
   }, [send])
 
   const fold = useCallback(() => {
@@ -172,9 +172,9 @@ export function GameProvider({ children }) {
       leaveRoom,
       startGame,
       nextRound,
-      look,
       bet,
       raise,
+      callBet,
       fold,
       compare,
       showdown,

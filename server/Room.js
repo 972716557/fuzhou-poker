@@ -170,9 +170,9 @@ export class Room {
         break
       }
 
-      case C2S.PLAYER_LOOK:
       case C2S.PLAYER_BET:
       case C2S.PLAYER_RAISE:
+      case C2S.PLAYER_CALL_BET:
       case C2S.PLAYER_FOLD:
       case C2S.PLAYER_COMPARE:
       case C2S.PLAYER_SHOWDOWN: {

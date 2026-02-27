@@ -14,7 +14,6 @@ export class Player {
 
     // 每局重置的状态
     this.hand = null
-    this.hasLooked = false
     this.hasFolded = false
     this.currentBet = 0
     this.isActive = true
@@ -22,7 +21,6 @@ export class Player {
 
   resetRound() {
     this.hand = null
-    this.hasLooked = false
     this.hasFolded = false
     this.currentBet = 0
     this.isActive = true
@@ -41,7 +39,6 @@ export class Player {
       name: this.name,
       avatar: this.avatar,
       chips: this.chips,
-      hasLooked: this.hasLooked,
       hasFolded: this.hasFolded,
       currentBet: this.currentBet,
       isActive: this.isActive,

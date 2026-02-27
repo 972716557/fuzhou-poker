@@ -1,4 +1,5 @@
-import { motion } from 'framer-motion'
+import { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import Card from './Card.jsx'
 import { useGame } from '../game/GameContext.jsx'
 import { PHASE } from '../../shared/constants.js'
@@ -19,6 +20,30 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn }) {
   const isDisconnected = player.isConnected === false
   const showCards = phase === PHASE.SHOWDOWN || phase === PHASE.SETTLEMENT
 
+  // 操作提示浮动标签
+  const [actionLabel, setActionLabel] = useState(null)
+  const lastActionTsRef = useRef(null)
+
+  useEffect(() => {
+    const la = gameState?.lastAction
+    if (la && la.playerId === player.id && la.ts !== lastActionTsRef.current) {
+      lastActionTsRef.current = la.ts
+      setActionLabel(la.label)
+      const timer = setTimeout(() => setActionLabel(null), 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [gameState?.lastAction, player.id])
+
+  const labelColorMap = {
+    '恰提': 'bg-yellow-400 text-black',
+    '带上': 'bg-orange-400 text-black',
+    'All in': 'bg-red-500 text-white',
+    '跟注': 'bg-green-600 text-white',
+    '弃牌': 'bg-gray-500 text-white',
+    '比牌': 'bg-purple-500 text-white',
+    '加注': 'bg-orange-500 text-white',
+  }
+
   // 手牌：只有服务端发来 hand !== null 才有牌可看
   const hasHand = player.hand && player.hand.length === 2
   const handRank = hasHand ? getHandRank(player.hand[0], player.hand[1]) : null
@@ -36,6 +61,23 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn }) {
       animate={{ scale: 1, opacity: 1 }}
       transition={{ delay: index * 0.05, type: 'spring', stiffness: 300 }}
     >
+      {/* 操作提示浮动标签 */}
+      <AnimatePresence>
+        {actionLabel && (
+          <motion.div
+            key={actionLabel + lastActionTsRef.current}
+            initial={{ opacity: 0, y: 5, scale: 0.5 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.5 }}
+            transition={{ duration: 0.3 }}
+            style={{ position: 'absolute', top: '-28px', left: '50%', transform: 'translateX(-50%)', zIndex: 30 }}
+            className={`whitespace-nowrap text-xs font-bold px-3 py-1 rounded-full shadow-lg ${labelColorMap[actionLabel] || 'bg-gray-600 text-white'}`}
+          >
+            {actionLabel}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* 玩家头像 */}
       <motion.div
         className={`relative w-12 h-12 rounded-full flex items-center justify-center text-2xl border-2 shadow-lg
@@ -55,13 +97,6 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn }) {
         {isDealer && (
           <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow">
             D
-          </div>
-        )}
-
-        {/* 已看牌标记 */}
-        {player.hasLooked && isActive && (
-          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center text-white shadow" style={{ fontSize: 8 }}>
-            眼
           </div>
         )}
 
@@ -106,7 +141,7 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn }) {
       {/* 牌面（发牌阶段隐藏） */}
       {!isDealing && phase !== PHASE.WAITING && (
         <div className="flex gap-0.5 mt-1">
-          {hasHand && (showCards || player.hasLooked) ? (
+          {hasHand ? (
             <>
               <Card card={player.hand[0]} small delay={0} />
               <Card card={player.hand[1]} small delay={0.1} />

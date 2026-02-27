@@ -29,6 +29,9 @@ export class GameEngine {
     this.config = { ...DEFAULT_CONFIG }
     this.winnerId = null
     this.dealingState = null
+    this.startPlayerIndex = 0
+    this.callBetCount = 0
+    this.lastAction = null
     this.players = [] // 由 Room 设置
   }
 
@@ -69,7 +72,10 @@ export class GameEngine {
     this.bettingRound = 0
     this.currentBet = this.config.baseBlind
     this.currentPlayerIndex = startPlayerIndex
+    this.callBetCount = 0
+    this.lastAction = null
 
+    this.startPlayerIndex = startPlayerIndex
     this.dealingState = { cutCard, cutValue, startPlayerIndex, hands }
     this.addLog(`第 ${this.roundNumber} 局开始！切牌：${cutCard.name}，点数 ${cutValue}`)
 
@@ -98,6 +104,8 @@ export class GameEngine {
     this.bettingRound = 1
     this.currentPlayerIndex = startPlayerIndex
     this.dealingState = null
+    this.callBetCount = 0
+    this.lastAction = null
 
     this.addLog(`发牌完毕！底注 ${this.config.baseBlind}`)
   }
@@ -118,6 +126,11 @@ export class GameEngine {
     return this.players.filter(p => p.isActive && !p.hasFolded)
   }
 
+  /** 获取玩家在本轮中的位置优先级（越小越靠前，先叫者大） */
+  getPositionPriority(playerIndex) {
+    return (playerIndex - this.startPlayerIndex + this.players.length) % this.players.length
+  }
+
   /** 处理玩家操作 */
   processAction(playerId, actionType, payload) {
     const playerIndex = this.players.findIndex(p => p.id === playerId)
@@ -128,31 +141,28 @@ export class GameEngine {
     let { pot, currentBet, bettingRound } = this
 
     switch (actionType) {
-      case 'c2s:look': {
-        player.hasLooked = true
-        this.addLog(`${player.name} 看牌了`)
-        break
-      }
-
       case 'c2s:bet': {
-        const betAmount = player.hasLooked ? currentBet * 2 : currentBet
+        const betAmount = currentBet
+        let betLabel = '跟注'
         if (player.chips < betAmount) {
           pot += player.chips
           player.currentBet += player.chips
           player.chips = 0
-          this.addLog(`${player.name} 全押 (筹码不足)`)
+          betLabel = 'All in'
+          this.addLog(`${player.name} All in (筹码不足)`)
         } else {
           player.chips -= betAmount
           player.currentBet += betAmount
           pot += betAmount
           this.addLog(`${player.name} 跟注 ${betAmount}`)
         }
+        this.lastAction = { playerId, label: betLabel, ts: Date.now() }
         break
       }
 
       case 'c2s:raise': {
         const raiseAmount = payload.amount || currentBet * 2
-        const actualAmount = player.hasLooked ? raiseAmount * 2 : raiseAmount
+        const actualAmount = raiseAmount
         if (player.chips < actualAmount) {
           pot += player.chips
           player.currentBet += player.chips
@@ -165,6 +175,31 @@ export class GameEngine {
           currentBet = raiseAmount
           this.addLog(`${player.name} 加注到 ${raiseAmount}`)
         }
+        this.lastAction = { playerId, label: '加注', ts: Date.now() }
+        break
+      }
+
+      case 'c2s:call_bet': {
+        const newBet = currentBet * 2
+        const payAmount = newBet
+        let callLabel
+        if (player.chips < payAmount) {
+          pot += player.chips
+          player.currentBet += player.chips
+          player.chips = 0
+          currentBet = newBet
+          callLabel = 'All in'
+          this.addLog(`${player.name} All in!`)
+        } else {
+          player.chips -= payAmount
+          player.currentBet += payAmount
+          pot += payAmount
+          currentBet = newBet
+          callLabel = this.callBetCount === 0 ? '恰提' : '带上'
+          this.addLog(`${player.name} ${callLabel}！下注 ${payAmount}`)
+        }
+        this.callBetCount++
+        this.lastAction = { playerId, label: callLabel, ts: Date.now() }
         break
       }
 
@@ -172,6 +207,7 @@ export class GameEngine {
         player.hasFolded = true
         player.isActive = false
         this.addLog(`${player.name} 弃牌`)
+        this.lastAction = { playerId, label: '弃牌', ts: Date.now() }
         break
       }
 
@@ -186,7 +222,7 @@ export class GameEngine {
         const target = this.players.find(p => p.id === payload.targetPlayerId)
         if (!target || target.hasFolded || !target.isActive) return false
 
-        const compareCost = player.hasLooked ? currentBet * 2 : currentBet
+        const compareCost = currentBet
         player.chips -= compareCost
         pot += compareCost
         this.addLog(`${player.name} 向 ${target.name} 发起比牌`)
@@ -202,10 +238,21 @@ export class GameEngine {
           player.isActive = false
           this.addLog(`比牌结果：${target.name} 赢！${player.name} 出局`)
         } else {
-          player.hasFolded = true
-          player.isActive = false
-          this.addLog(`比牌结果：平局！发起者 ${player.name} 出局`)
+          // 同牌：先叫者（位置靠前者）大
+          const targetIndex = this.players.findIndex(p => p.id === target.id)
+          const playerPriority = this.getPositionPriority(playerIndex)
+          const targetPriority = this.getPositionPriority(targetIndex)
+          if (playerPriority < targetPriority) {
+            target.hasFolded = true
+            target.isActive = false
+            this.addLog(`比牌结果：同牌！${player.name} 位置靠前，${target.name} 出局`)
+          } else {
+            player.hasFolded = true
+            player.isActive = false
+            this.addLog(`比牌结果：同牌！${target.name} 位置靠前，${player.name} 出局`)
+          }
         }
+        this.lastAction = { playerId, label: '比牌', ts: Date.now() }
         break
       }
 
@@ -238,13 +285,11 @@ export class GameEngine {
     }
 
     // 移到下一个玩家
-    if (actionType !== 'c2s:look') {
-      const nextIndex = this.getNextActiveIndex(playerIndex)
-      if (nextIndex <= playerIndex) {
-        this.bettingRound = bettingRound + 1
-      }
-      this.currentPlayerIndex = nextIndex
+    const nextIndex = this.getNextActiveIndex(playerIndex)
+    if (nextIndex <= playerIndex) {
+      this.bettingRound = bettingRound + 1
     }
+    this.currentPlayerIndex = nextIndex
 
     return true
   }
@@ -265,7 +310,16 @@ export class GameEngine {
         activePlayers[i].hand[0], activePlayers[i].hand[1],
         activePlayers[winnerIdx].hand[0], activePlayers[winnerIdx].hand[1],
       )
-      if (cmp > 0) winnerIdx = i
+      if (cmp > 0) {
+        winnerIdx = i
+      } else if (cmp === 0) {
+        // 同牌：先叫者（位置靠前者）大
+        const challengerPlayerIndex = this.players.findIndex(p => p.id === activePlayers[i].id)
+        const currentWinnerPlayerIndex = this.players.findIndex(p => p.id === activePlayers[winnerIdx].id)
+        if (this.getPositionPriority(challengerPlayerIndex) < this.getPositionPriority(currentWinnerPlayerIndex)) {
+          winnerIdx = i
+        }
+      }
     }
 
     const winner = activePlayers[winnerIdx]
@@ -288,6 +342,7 @@ export class GameEngine {
       dealerPlayerId: this.players[this.dealerIndex]?.id || null,
       config: this.config,
       winnerId: this.winnerId,
+      lastAction: this.lastAction,
       logs: this.logs,
     }
   }

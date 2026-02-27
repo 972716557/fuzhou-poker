@@ -8,7 +8,7 @@
  *   Level 0 - 点数: (card1.points + card2.points) % 10, 9最大, 0(瘪十)最小
  */
 
-import { CARD_TYPE } from './deck.js'
+import { CARD_TYPE, PAIR_NAMES } from './deck.js'
 
 /**
  * 判断是否为至尊（大王+小王）
@@ -25,7 +25,7 @@ function isZhiZun(card1, card2) {
  */
 function isPair(card1, card2) {
   if (card1.type !== CARD_TYPE.NORMAL || card2.type !== CARD_TYPE.NORMAL) return false
-  return card1.value === card2.value
+  return card1.pairGroup && card2.pairGroup && card1.pairGroup === card2.pairGroup
 }
 
 /**
@@ -73,15 +73,10 @@ export function getHandRank(card1, card2) {
 
   // Level 2: 对子
   if (isPair(card1, card2)) {
-    const pairNames = {
-      Q: '天', 2: '地', 8: '人', 4: '和',
-      10: '梅/长三', 6: '长二', 7: '短',
-      J: '幺', 5: '五', 9: '九', A: '幺A', 3: '三', K: 'K对',
-    }
     return {
       level: 2,
       rank: card1.pairRank,
-      name: `对子·${pairNames[card1.value] || card1.value}`,
+      name: `对子·${PAIR_NAMES[card1.pairGroup] || card1.value}`,
       points: -1,
     }
   }
