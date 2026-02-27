@@ -7,6 +7,7 @@ export default function ControlPanel() {
   const { gameState, roomState, myPlayer, isMyTurn, isSpectator, actions } = useGame()
 
   const [showCompareMenu, setShowCompareMenu] = useState(false)
+  const [showKickMenu, setShowKickMenu] = useState(false)
 
   const phase = gameState?.phase || PHASE.WAITING
   const players = gameState?.players || []
@@ -86,6 +87,9 @@ export default function ControlPanel() {
   const canCompare = bettingRound >= (config.minRoundsToCompare || 3)
   const betAmount = currentBet
   const callBetAmount = currentBet * 2
+  const pot = gameState?.pot || 0
+  const maxKicks = currentBet > 0 ? Math.floor(pot / currentBet) : 0
+  const canKick = maxKicks >= 1
 
   const compareTargets = players.filter(
     p => p.id !== roomState.playerId && p.isActive && !p.hasFolded
@@ -121,12 +125,67 @@ export default function ControlPanel() {
           叫牌 {callBetAmount}
         </motion.button>
 
+        {/* 踢 */}
+        <div className="relative">
+          <motion.button
+            whileHover={{ scale: canKick ? 1.05 : 1 }}
+            whileTap={{ scale: canKick ? 0.95 : 1 }}
+            onClick={() => {
+              if (canKick) {
+                setShowKickMenu(!showKickMenu)
+                setShowCompareMenu(false)
+              }
+            }}
+            className={`px-4 py-2 rounded-lg font-bold text-sm ${
+              canKick
+                ? 'bg-amber-600 text-white hover:bg-amber-500'
+                : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            踢
+          </motion.button>
+
+          <AnimatePresence>
+            {showKickMenu && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-900 rounded-lg shadow-xl border border-gray-700 p-2 min-w-[140px] max-h-[200px] overflow-y-auto"
+              >
+                <div className="text-xs text-gray-400 mb-1 text-center">踢几脚？</div>
+                {Array.from({ length: Math.min(maxKicks, 10) }, (_, i) => i + 1).map((n) => {
+                  const kickPayAmount = currentBet + n * currentBet
+                  const kickNames = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十']
+                  return (
+                    <button
+                      key={n}
+                      onClick={() => {
+                        actions.kick(n)
+                        setShowKickMenu(false)
+                      }}
+                      className="block w-full text-left px-3 py-1.5 text-sm text-white hover:bg-gray-700 rounded transition-colors"
+                    >
+                      踢{kickNames[n - 1] || n}脚 <span className="text-amber-400">({kickPayAmount})</span>
+                    </button>
+                  )
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
         {/* 比牌 */}
         <div className="relative">
           <motion.button
             whileHover={{ scale: canCompare ? 1.05 : 1 }}
             whileTap={{ scale: canCompare ? 0.95 : 1 }}
-            onClick={() => canCompare && setShowCompareMenu(!showCompareMenu)}
+            onClick={() => {
+              if (canCompare) {
+                setShowCompareMenu(!showCompareMenu)
+                setShowKickMenu(false)
+              }
+            }}
             className={`px-4 py-2 rounded-lg font-bold text-sm ${
               canCompare
                 ? 'bg-purple-600 text-white hover:bg-purple-500'

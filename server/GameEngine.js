@@ -203,6 +203,35 @@ export class GameEngine {
         break
       }
 
+      case 'c2s:kick': {
+        const kicks = Math.floor(payload.kicks || 1)
+        if (kicks < 1) return false
+        const kickAmount = kicks * currentBet
+        if (kickAmount > pot) {
+          this.addLog(`踢的金额不能超过底池 (${pot})`)
+          return false
+        }
+        const newBet = currentBet + kickAmount
+        const payAmount = newBet
+        let kickLabel = `踢${kicks}脚`
+        if (player.chips < payAmount) {
+          pot += player.chips
+          player.currentBet += player.chips
+          player.chips = 0
+          currentBet = newBet
+          kickLabel = 'All in'
+          this.addLog(`${player.name} All in (踢${kicks}脚，筹码不足)`)
+        } else {
+          player.chips -= payAmount
+          player.currentBet += payAmount
+          pot += payAmount
+          currentBet = newBet
+          this.addLog(`${player.name} 踢${kicks}脚！下注 ${payAmount}，跟注额升至 ${newBet}`)
+        }
+        this.lastAction = { playerId, label: kickLabel, ts: Date.now() }
+        break
+      }
+
       case 'c2s:fold': {
         player.hasFolded = true
         player.isActive = false
