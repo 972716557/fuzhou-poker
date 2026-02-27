@@ -218,10 +218,11 @@ export class GameEngine {
       }
 
       case 'c2s:kick': {
-        // 踢脚：成为新的 lastRaiser
+        // 踢脚：一脚=1个底注；踢的总金额不能超过底池；成为新的 lastRaiser
         const kicks = Math.floor(payload.kicks || 1)
         if (kicks < 1) return false
-        const kickAmount = kicks * currentBet
+        const baseBlind = this.config.baseBlind
+        const kickAmount = kicks * baseBlind
         if (kickAmount > pot) {
           this.addLog(`踢的金额不能超过底池 (${pot})`)
           return false

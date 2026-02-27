@@ -2,6 +2,9 @@
  * 游戏常量
  */
 
+// 布局：底部操作栏高度，与桌面明确分离，不挡牌
+export const ACTION_BAR_H = 132
+
 // 游戏阶段
 export const PHASE = {
   WAITING: 'WAITING',       // 等待开始

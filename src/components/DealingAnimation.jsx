@@ -41,21 +41,21 @@ export default function DealingAnimation({ seatPositions }) {
   const players = gameState?.players || []
   const playerCount = players.length || seatPositions.length
 
-  // 阶段推进
+  // 阶段推进（时长缩短，加快进入对局）
   useEffect(() => {
     let timer
     switch (subPhase) {
       case SUB_PHASE.DECK_SHOW:
-        timer = setTimeout(() => setSubPhase(SUB_PHASE.HAND_CUT), 800)
+        timer = setTimeout(() => setSubPhase(SUB_PHASE.HAND_CUT), 380)
         break
       case SUB_PHASE.HAND_CUT:
-        timer = setTimeout(() => setSubPhase(SUB_PHASE.CARD_REVEAL), 1200)
+        timer = setTimeout(() => setSubPhase(SUB_PHASE.CARD_REVEAL), 500)
         break
       case SUB_PHASE.CARD_REVEAL:
         timer = setTimeout(() => {
           setCountIndex(0)
           setSubPhase(SUB_PHASE.COUNTING)
-        }, 1500)
+        }, 600)
         break
       default:
         break
@@ -67,12 +67,12 @@ export default function DealingAnimation({ seatPositions }) {
   useEffect(() => {
     if (subPhase !== SUB_PHASE.COUNTING) return
     if (countIndex >= cutValue) {
-      const timer = setTimeout(() => setSubPhase(SUB_PHASE.DEALING), 600)
+      const timer = setTimeout(() => setSubPhase(SUB_PHASE.DEALING), 280)
       return () => clearTimeout(timer)
     }
     const seatIdx = (dealerIndex + countIndex) % playerCount
     setCountHighlight(seatIdx)
-    const timer = setTimeout(() => setCountIndex(prev => prev + 1), 350)
+    const timer = setTimeout(() => setCountIndex(prev => prev + 1), 220)
     return () => clearTimeout(timer)
   }, [subPhase, countIndex, cutValue, dealerIndex, playerCount])
 
@@ -98,7 +98,7 @@ export default function DealingAnimation({ seatPositions }) {
             setAnimDone(true)
             actions.dealAnimDone()
           }
-        }, 500)
+        }, 280)
         return
       }
 
@@ -110,10 +110,10 @@ export default function DealingAnimation({ seatPositions }) {
 
       setTimeout(() => {
         setFlyingCards(prev => prev.filter(c => c.id !== id))
-      }, 400)
+      }, 280)
 
       step++
-    }, 150)
+    }, 100)
 
     return () => clearInterval(interval)
   }, [subPhase, playerCount, startPlayerIndex, actions, animDone])

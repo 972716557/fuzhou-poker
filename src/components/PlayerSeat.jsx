@@ -49,13 +49,17 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn }) {
   const handRank = hasHand ? getHandRank(player.hand[0], player.hand[1]) : null
   const rankColor = handRank ? getHandColor(handRank) : '#fff'
 
+  // 自己：整块在座位点上方（-100%），牌绝不伸入底部操作栏
+  // 其他玩家：居中对齐（-50%）
+  const translateY = isMe ? '-100%' : '-50%'
+
   return (
     <motion.div
       className="absolute flex flex-col items-center"
       style={{
         left: position.x,
         top: position.y,
-        transform: 'translate(-50%, -50%)',
+        transform: `translate(-50%, ${translateY})`,
       }}
       initial={{ scale: 0, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
@@ -138,8 +142,8 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn }) {
         </motion.div>
       )}
 
-      {/* 牌面（发牌阶段隐藏） */}
-      {!isDealing && phase !== PHASE.WAITING && (
+      {/* 牌面（发牌阶段隐藏）；“我”的手牌已移到桌面上显示，此处不重复渲染 */}
+      {!isDealing && phase !== PHASE.WAITING && !isMe && (
         <div className="flex gap-0.5 mt-1">
           {hasHand ? (
             <>
@@ -147,7 +151,6 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn }) {
               <Card card={player.hand[1]} small delay={0.1} />
             </>
           ) : (
-            // 有手牌但未看牌（或别人的牌被隐藏）：显示背面
             phase !== PHASE.WAITING && (
               <>
                 <Card faceDown small delay={0} />

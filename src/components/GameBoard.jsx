@@ -5,30 +5,44 @@ import PlayerSeat from './PlayerSeat.jsx'
 import ControlPanel from './ControlPanel.jsx'
 import GameLog from './GameLog.jsx'
 import DealingAnimation from './DealingAnimation.jsx'
+import Card from './Card.jsx'
 import { PHASE } from '../../shared/constants.js'
 
-function calculateSeatPositions(count, width, height) {
-  const positions = []
-  const isMobile = width < 640
-  // 手机上顶部留给状态栏(~40px)，底部留给操作面板(~100px)，中心上移
-  const offsetY = isMobile ? -30 : 0
+// 桌面椭圆占视口宽度比例，越大桌子越宽
+const TABLE_WIDTH_RATIO = 0.92
+
+/**
+ * 座位在桌子边缘（与绿色椭圆边界重合）
+ * 椭圆与桌面 div 同尺寸：宽 tableWidth*TABLE_WIDTH_RATIO，高 availH
+ */
+function calculateSeatPositions(count, width, height, myIndex) {
+  const TOP_PAD = 56
+  const BOT_PAD = 180 // 底部留出足够空间，保证“我”的头像+手牌完整显示、不被裁切
+
+  const availH = height - TOP_PAD - BOT_PAD
   const centerX = width / 2
-  const centerY = height / 2 + offsetY
-  const radiusX = width * (isMobile ? 0.38 : 0.40)
-  // 手机竖屏高度充裕，但底部有操作区，纵向半径相应缩小
-  const radiusY = height * (isMobile ? 0.28 : 0.36)
+  const centerY = TOP_PAD + availH / 2
+
+  // 与桌面椭圆一致：半宽、半高
+  const radiusX = (width * TABLE_WIDTH_RATIO) / 2
+  const radiusY = availH / 2
+
+  const myAngle = Math.PI / 2
+  const positions = new Array(count)
+
   for (let i = 0; i < count; i++) {
-    const angle = (2 * Math.PI * i) / count - Math.PI / 2
-    positions.push({
+    const offset = (i - myIndex + count) % count
+    const angle = myAngle + (2 * Math.PI * offset) / count
+    positions[i] = {
       x: centerX + radiusX * Math.cos(angle),
       y: centerY + radiusY * Math.sin(angle),
-    })
+    }
   }
   return positions
 }
 
 export default function GameBoard() {
-  const { gameState, roomState, dealingInfo, connected, connectionState, actions, isSpectator } = useGame()
+  const { gameState, roomState, dealingInfo, connected, connectionState, actions, isSpectator, myPlayer } = useGame()
 
   const tableWidth = typeof window !== 'undefined' ? window.innerWidth : 1200
   const tableHeight = typeof window !== 'undefined' ? window.innerHeight : 800
@@ -49,9 +63,13 @@ export default function GameBoard() {
     isActive: true,
   }))
 
+  // 找自己在列表中的位置，用于把自己固定在底部
+  const myIndex = displayPlayers.findIndex(p => p.id === roomState.playerId)
+  const effectiveMyIndex = myIndex >= 0 ? myIndex : 0
+
   const seatPositions = useMemo(
-    () => calculateSeatPositions(Math.max(displayPlayers.length, 1), tableWidth, tableHeight),
-    [displayPlayers.length, tableWidth, tableHeight],
+    () => calculateSeatPositions(Math.max(displayPlayers.length, 1), tableWidth, tableHeight, effectiveMyIndex),
+    [displayPlayers.length, tableWidth, tableHeight, effectiveMyIndex],
   )
 
   const handleCopyRoomId = () => {
@@ -59,15 +77,17 @@ export default function GameBoard() {
     navigator.clipboard?.writeText(url).catch(() => {})
   }
 
+  const TABLE_BOTTOM_PAD = 180
+
   return (
     <div className="relative w-full h-full overflow-hidden bg-gray-900">
-      {/* 背景桌面 */}
-      <div className="absolute inset-0 flex items-center justify-center" style={{ paddingBottom: tableWidth < 640 ? 60 : 0 }}>
+      {/* 背景桌面：操作栏已移至中央，底部仅保留小留白 */}
+      <div className="absolute inset-0 flex items-center justify-center" style={{ paddingTop: 56, paddingBottom: TABLE_BOTTOM_PAD }}>
         <div
           className="rounded-[50%] border-4 border-amber-900/60 shadow-2xl"
           style={{
-            width: tableWidth * (tableWidth < 640 ? 0.78 : 0.75),
-            height: tableHeight * (tableWidth < 640 ? 0.50 : 0.65),
+            width: tableWidth * TABLE_WIDTH_RATIO,
+            height: '100%',
             background: 'radial-gradient(ellipse at center, #1a6b35 0%, #145528 50%, #0f3d1d 100%)',
             boxShadow: '0 0 60px rgba(26, 92, 46, 0.3), inset 0 0 80px rgba(0,0,0,0.3)',
           }}
@@ -116,6 +136,26 @@ export default function GameBoard() {
           </div>
         </div>
       </div>
+
+      {/* 我的手牌：放在桌面上（底池下方），节省底部空间 */}
+      {!isDealing && phase !== PHASE.WAITING && myPlayer && !isSpectator && (
+        <div
+          className="absolute left-1/2 flex gap-1.5 justify-center items-center z-[5]"
+          style={{ top: '68%', transform: 'translate(-50%, -50%)' }}
+        >
+          {myPlayer.hand && myPlayer.hand.length === 2 ? (
+            <>
+              <Card card={myPlayer.hand[0]} small delay={0} />
+              <Card card={myPlayer.hand[1]} small delay={0.1} />
+            </>
+          ) : (
+            <>
+              <Card faceDown small delay={0} />
+              <Card faceDown small delay={0.1} />
+            </>
+          )}
+        </div>
+      )}
 
       {/* 玩家座位 */}
       {displayPlayers.map((player, index) => (
@@ -192,10 +232,11 @@ export default function GameBoard() {
         </div>
       )}
 
-      {/* 离开房间 */}
+      {/* 离开房间：放在操作栏上方，不占栏内 */}
       <button
         onClick={actions.leaveRoom}
-        className="absolute bottom-2 left-2 text-gray-600 hover:text-gray-400 text-xs transition"
+        className="absolute left-2 text-gray-500 hover:text-gray-400 text-xs transition z-10"
+        style={{ bottom: 12 }}
       >
         离开房间
       </button>

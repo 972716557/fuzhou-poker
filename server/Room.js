@@ -214,14 +214,14 @@ export class Room {
     const dealInfo = this.engine.startRound()
     this.broadcast({ type: S2C.DEAL_START, payload: dealInfo })
 
-    // 15秒超时保护
+    // 5 秒超时：若有人未回传动画完成，也强制进入下注
     this.dealAnimTimer = setTimeout(() => {
       if (this.engine.phase === PHASE.DEALING) {
         this.engine.completeDeal()
         this.sendDealComplete()
         this.broadcastGameState()
       }
-    }, 15000)
+    }, 5000)
   }
 
   checkAllAnimDone() {

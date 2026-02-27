@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../game/GameContext.jsx'
-import { PHASE } from '../../shared/constants.js'
+import { PHASE, ACTION_BAR_H, DEFAULT_CONFIG } from '../../shared/constants.js'
 
 export default function ControlPanel() {
   const { gameState, roomState, myPlayer, isMyTurn, isSpectator, actions } = useGame()
@@ -21,36 +21,52 @@ export default function ControlPanel() {
   // 旁观者不操作
   if (isSpectator) return null
 
+  // 操作栏：放在牌桌中央（底池下方），不挡底部玩家头像和手牌
+  const ActionBar = ({ children }) => (
+    <div
+      className="absolute left-1/2 flex flex-col items-center justify-center rounded-2xl border border-gray-600/80 bg-gray-900/95 backdrop-blur shadow-2xl z-10 py-3 px-4"
+      style={{
+        top: '52%',
+        transform: 'translate(-50%, -50%)',
+        minHeight: ACTION_BAR_H,
+      }}
+    >
+      {children}
+    </div>
+  )
+
   // 等待开始
   if (phase === PHASE.WAITING) {
     const playerCount = roomState.playerList.length
     return (
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3">
-        <div className="text-gray-400 text-sm">
-          {playerCount} 人在房间
-          {playerCount < 2 && <span className="text-yellow-400 ml-2">（至少需要2人）</span>}
+      <ActionBar>
+        <div className="flex flex-col items-center gap-3 py-2">
+          <div className="text-gray-400 text-sm">
+            {playerCount} 人在房间
+            {playerCount < 2 && <span className="text-yellow-400 ml-2">（至少需要2人）</span>}
+          </div>
+          {isHost ? (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={actions.startGame}
+              disabled={playerCount < 2}
+              className="px-8 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-bold rounded-xl shadow-lg hover:from-green-500 hover:to-green-600 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              开始游戏
+            </motion.button>
+          ) : (
+            <div className="text-gray-500 text-sm">等待房主开始...</div>
+          )}
         </div>
-        {isHost ? (
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={actions.startGame}
-            disabled={playerCount < 2}
-            className="px-8 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-bold rounded-xl shadow-lg hover:from-green-500 hover:to-green-600 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            开始游戏
-          </motion.button>
-        ) : (
-          <div className="text-gray-500 text-sm">等待房主开始...</div>
-        )}
-      </div>
+      </ActionBar>
     )
   }
 
   // 结算
   if (phase === PHASE.SETTLEMENT) {
     return (
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+      <ActionBar>
         {isHost ? (
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -63,7 +79,7 @@ export default function ControlPanel() {
         ) : (
           <div className="text-gray-500 text-sm">等待房主开始下一局...</div>
         )}
-      </div>
+      </ActionBar>
     )
   }
 
@@ -73,10 +89,10 @@ export default function ControlPanel() {
   if (!isMyTurn || !myPlayer) {
     const currentPlayer = players.find(p => p.id === gameState?.currentPlayerId)
     return (
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
-        <div className="bg-black/50 backdrop-blur rounded-xl px-4 py-2">
-          <span className="text-gray-400 text-sm">
-            等待 <span className="text-yellow-300">{currentPlayer?.name || '...'}</span> 操作
+      <div className="absolute top-12 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+        <div className="bg-black/60 backdrop-blur rounded-xl px-4 py-2 border border-amber-800/40">
+          <span className="text-gray-300 text-sm">
+            等待 <span className="text-yellow-300 font-medium">{currentPlayer?.name || '...'}</span> 操作
           </span>
         </div>
       </div>
@@ -86,19 +102,21 @@ export default function ControlPanel() {
   const betAmount = currentBet
   const callBetAmount = currentBet * 2
   const pot = gameState?.pot || 0
-  const maxKicks = currentBet > 0 ? Math.floor(pot / currentBet) : 0
+  const baseBlind = config.baseBlind ?? DEFAULT_CONFIG.baseBlind
+  const maxKicks = baseBlind > 0 ? Math.min(10, Math.floor(pot / baseBlind)) : 0
   const canKick = maxKicks >= 1
 
   return (
-    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-[calc(100%-16px)] max-w-sm z-10">
-      <div className="text-center mb-1">
-        <span className="text-yellow-300 text-xs font-bold">你的回合</span>
-        <span className="text-gray-400 text-xs ml-2">
-          第 {bettingRound} 轮 · 跟注 {betAmount}
-        </span>
-      </div>
+    <ActionBar>
+      <div className="w-full max-w-sm px-3 flex flex-col items-center">
+        <div className="text-center mb-1">
+          <span className="text-yellow-300 text-xs font-bold">你的回合</span>
+          <span className="text-gray-400 text-xs ml-2">
+            第 {bettingRound} 轮 · 跟注 {betAmount}
+          </span>
+        </div>
 
-      <div className="bg-black/80 backdrop-blur rounded-xl px-3 py-2 shadow-2xl flex flex-col gap-1.5">
+        <div className="flex flex-col gap-1.5">
         {/* 第一行：跟注 + 叫牌 + 弃牌 */}
         <div className="flex gap-1.5">
           <motion.button
@@ -132,12 +150,7 @@ export default function ControlPanel() {
           <div className="relative flex-1">
             <motion.button
               whileTap={{ scale: canKick ? 0.95 : 1 }}
-              onClick={() => {
-                if (canKick) {
-                  setShowKickMenu(!showKickMenu)
-                  setShowCompareMenu(false)
-                }
-              }}
+              onClick={() => canKick && setShowKickMenu(!showKickMenu)}
               className={`w-full py-2 rounded-lg font-bold text-sm ${
                 canKick
                   ? 'bg-amber-600 text-white active:bg-amber-500'
@@ -157,7 +170,7 @@ export default function ControlPanel() {
                 >
                   <div className="text-xs text-gray-400 mb-1 text-center">踢几脚？</div>
                   {Array.from({ length: Math.min(maxKicks, 10) }, (_, i) => i + 1).map((n) => {
-                    const kickPayAmount = currentBet + n * currentBet
+                    const kickPayAmount = currentBet + n * baseBlind
                     const kickNames = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十']
                     return (
                       <button
@@ -187,7 +200,8 @@ export default function ControlPanel() {
           </motion.button>
 
         </div>
+        </div>
       </div>
-    </div>
+    </ActionBar>
   )
 }
