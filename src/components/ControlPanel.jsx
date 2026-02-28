@@ -106,12 +106,18 @@ export default function ControlPanel() {
     )
   }
 
-  const betAmount = currentBet
-  const callBetAmount = currentBet * 2
   const pot = gameState?.pot || 0
   const alreadyWantsOpen = myPlayer?.wantsToOpen || false
   const baseBlind = config.baseBlind ?? DEFAULT_CONFIG.baseBlind
-  const maxKicks = baseBlind > 0 ? Math.min(10, Math.floor(pot / baseBlind)) : 0
+
+  // 底池上限：所有下注额不得超过当前底池
+  const betAmount = Math.min(currentBet, pot)
+  const callBetAmount = Math.min(currentBet * 2, pot)
+  const canCallBet = callBetAmount > currentBet // 底池不够则无法叫牌
+
+  // 踢一脚：只显示不超过底池上限的选项
+  const maxKickBet = pot // 踢后的新跟注额上限 = 底池
+  const maxKicks = baseBlind > 0 ? Math.min(10, Math.max(0, Math.floor((maxKickBet - currentBet) / baseBlind))) : 0
   const canKick = maxKicks >= 1
 
   return (
@@ -120,7 +126,7 @@ export default function ControlPanel() {
         <div className="text-center mb-1">
           <span className="text-yellow-300 text-xs font-bold">你的回合</span>
           <span className="text-gray-400 text-xs ml-2">
-            第 {bettingRound} 轮 · 跟注 {betAmount}
+            第 {bettingRound} 轮 · 跟注 {betAmount} · 底池 {pot}
           </span>
         </div>
 
@@ -136,11 +142,15 @@ export default function ControlPanel() {
           </motion.button>
 
           <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={actions.callBet}
-            className="flex-1 py-2 bg-orange-600 text-white rounded-lg font-bold text-sm active:bg-orange-500"
+            whileTap={{ scale: canCallBet ? 0.95 : 1 }}
+            onClick={() => canCallBet && actions.callBet()}
+            className={`flex-1 py-2 rounded-lg font-bold text-sm ${
+              canCallBet
+                ? 'bg-orange-600 text-white active:bg-orange-500'
+                : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+            }`}
           >
-            叫牌 {callBetAmount}
+            叫牌 {canCallBet ? callBetAmount : '-'}
           </motion.button>
 
           <motion.button
@@ -177,9 +187,9 @@ export default function ControlPanel() {
                   className="absolute bottom-full mb-2 left-0 bg-gray-900 rounded-lg shadow-xl border border-gray-700 p-2 min-w-[140px] max-h-[200px] overflow-y-auto z-30"
                 >
                   <div className="text-xs text-gray-400 mb-1 text-center">踢几脚？一脚=1底注({baseBlind})</div>
-                  {Array.from({ length: Math.min(maxKicks, 10) }, (_, i) => i + 1).map((n) => {
+                  {Array.from({ length: maxKicks }, (_, i) => i + 1).map((n) => {
                     const kickAdd = n * baseBlind
-                    const kickPayAmount = currentBet + kickAdd
+                    const kickPayAmount = Math.min(currentBet + kickAdd, pot)
                     const kickNames = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十']
                     return (
                       <button

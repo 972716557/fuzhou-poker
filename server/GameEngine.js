@@ -67,7 +67,7 @@ export class GameEngine {
 
     this.roundNumber++
     this.phase = PHASE.DEALING
-    this.pot = 0
+    // 底池结转：不清零，保留上一轮剩余
     this.winnerId = null
     this.bettingRound = 0
     this.currentBet = this.config.baseBlind
@@ -88,27 +88,42 @@ export class GameEngine {
     }
   }
 
-  /** 发牌动画完成后：分配手牌、收底注 */
+  /** 发牌动画完成后：分配手牌、强制补仓（底池不足时收底注） */
   completeDeal() {
     if (!this.dealingState) return
     const { hands, startPlayerIndex } = this.dealingState
 
     this.players.forEach((p, i) => {
       p.hand = hands[i]
-      p.chips -= this.config.baseBlind
-      p.currentBet = this.config.baseBlind
-      p.totalBet = this.config.baseBlind
     })
 
-    this.pot = this.config.baseBlind * this.players.length
+    // 强制补仓：底池低于"初始基础底池"（玩家数 × 底注）时，全员追加底注
+    const basePot = this.config.baseBlind * this.players.length
+    if (this.pot < basePot) {
+      const ante = this.config.baseBlind
+      this.players.forEach(p => {
+        const pay = Math.min(ante, p.chips)
+        p.chips -= pay
+        p.currentBet = pay
+        p.totalBet = pay
+        this.pot += pay
+      })
+      this.addLog(`发牌完毕！补仓底注 ${this.config.baseBlind}，底池 ${this.pot}`)
+    } else {
+      // 底池充足，不收底注
+      this.players.forEach(p => {
+        p.currentBet = 0
+        p.totalBet = 0
+      })
+      this.addLog(`发牌完毕！底池结转 ${this.pot}，无需补仓`)
+    }
+
     this.phase = PHASE.BETTING
     this.bettingRound = 1
     this.currentPlayerIndex = startPlayerIndex
     this.dealingState = null
     this.callBetCount = 0
     this.lastAction = null
-
-    this.addLog(`发牌完毕！底注 ${this.config.baseBlind}`)
   }
 
   /** 获取下一个活跃玩家 */
@@ -143,8 +158,8 @@ export class GameEngine {
 
     switch (actionType) {
       case 'c2s:bet': {
-        // 跟注：重置自己的 wantsToOpen
-        const betAmount = currentBet
+        // 跟注：重置自己的 wantsToOpen；下注上限 = 底池
+        const betAmount = Math.min(currentBet, pot)
         let betLabel = '跟注'
         if (player.chips < betAmount) {
           pot += player.chips
@@ -166,8 +181,9 @@ export class GameEngine {
       }
 
       case 'c2s:call_bet': {
-        // 叫牌（恰提/带上）：翻倍 currentBet，重置所有其他人的 wantsToOpen
-        const newBet = currentBet * 2
+        // 叫牌（恰提/带上）：翻倍 currentBet，下注上限 = 底池
+        const newBet = Math.min(currentBet * 2, pot)
+        if (newBet <= currentBet) return false // 底池不够，无法加注
         const payAmount = newBet
         let callLabel
         if (player.chips < payAmount) {
@@ -197,16 +213,16 @@ export class GameEngine {
       }
 
       case 'c2s:kick': {
-        // 底注 = 开局每人下的钱（如 10）；踢一脚=1底注(10)，踢2脚=2底注(20)；踢的总金额不能超过底池
+        // 踢一脚：下注上限 = 底池
         const kicks = Math.floor(payload.kicks || 1)
         if (kicks < 1) return false
-        const baseBlind = this.config.baseBlind // 开局每人下的钱
+        const baseBlind = this.config.baseBlind
         const kickAmount = kicks * baseBlind
-        if (kickAmount > pot) {
-          this.addLog(`踢的金额不能超过底池 (${pot})`)
+        const newBet = Math.min(currentBet + kickAmount, pot)
+        if (newBet <= currentBet) {
+          this.addLog(`底池不足，无法踢 (${pot})`)
           return false
         }
-        const newBet = currentBet + kickAmount
         const payAmount = newBet
         let kickLabel = `踢${kicks}脚`
         if (player.chips < payAmount) {
@@ -261,19 +277,9 @@ export class GameEngine {
     if (activePlayers.length <= 1) {
       const winner = activePlayers[0]
       if (winner) {
-        const allPlayers = this.players.filter(p => p.totalBet > 0)
-        const awarded = this.settleSidePot(winner, allPlayers)
-        for (const p of allPlayers) {
-          if (p.totalBet > 0) {
-            p.chips += p.totalBet
-            this.addLog(`${p.name} 退还 ${p.totalBet}（超出赢家上限）`)
-            p.totalBet = 0
-          }
-        }
-        this.winnerId = winner.id
-        this.addLog(`${winner.name} 赢得 ${awarded}！`)
+        this.settleWinner(winner)
       }
-      this.pot = 0
+      this.players.forEach(p => p.totalBet = 0)
       this.phase = PHASE.SETTLEMENT
       return true
     }
@@ -297,26 +303,6 @@ export class GameEngine {
     return true
   }
 
-  /**
-   * Side pot 结算：赢家只能从每位玩家处赢走不超过自己 totalBet 的部分，
-   * 超出部分退还给对应玩家。
-   *
-   * 示例：A踢1脚共出了20，B带上出了40，A牌大。
-   *   A 最多从每人处赢 20，从B处赢20，剩余20退还B。
-   */
-  settleSidePot(winner, allPlayers) {
-    const cap = winner.totalBet  // 赢家本局累计出注上限
-    let winnings = 0
-    for (const p of allPlayers) {
-      const take = Math.min(p.totalBet, cap)
-      winnings += take
-      p.totalBet -= take  // 已被赢走的部分扣除
-    }
-    winner.chips += winnings
-    winner.totalBet = 0
-    return winnings
-  }
-
   /** 找出最强玩家（按 fuzhouPaiGow 规则 + 先叫牌者胜；位置优者视为先叫） */
   findBestPlayer(players) {
     let best = players[0]
@@ -331,6 +317,24 @@ export class GameEngine {
     return best
   }
 
+  /**
+   * 结算赢家：收益上限为自身本轮下注额，剩余底池结转至下一轮。
+   * winnerPayout = min(pot, 2 × winner.totalBet)
+   *   = 本金退还 + 盈利（盈利上限 = totalBet）
+   */
+  settleWinner(winner) {
+    const ownBet = winner.totalBet
+    const payout = Math.min(this.pot, 2 * ownBet)
+    const profit = payout - ownBet
+    winner.chips += payout
+    this.pot -= payout
+    this.winnerId = winner.id
+    this.addLog(`${winner.name} 赢得 ${profit}（本金 ${ownBet} + 盈利 ${profit}）`)
+    if (this.pot > 0) {
+      this.addLog(`底池结转 ${this.pot} 至下一轮`)
+    }
+  }
+
   /** 摊牌 */
   doShowdown() {
     const activePlayers = this.getActivePlayers()
@@ -340,37 +344,9 @@ export class GameEngine {
       this.addLog(`${p.name}: ${p.hand[0].name} + ${p.hand[1].name} = ${rank.name}`)
     })
 
-    // 所有参与结算的玩家（包括已弃牌的，他们的 totalBet 也要参与分配）
-    const allPlayers = this.players.filter(p => p.totalBet > 0)
-
-    // 按 totalBet 从小到大，依次让最强者赢走自己上限内的底池
-    const remaining = [...activePlayers]
-    let totalAwarded = 0
-
-    while (remaining.length > 0) {
-      const winner = this.findBestPlayer(remaining)
-      const awarded = this.settleSidePot(winner, allPlayers)
-      if (awarded > 0) {
-        this.addLog(`${winner.name} 赢得 ${awarded}`)
-        totalAwarded += awarded
-      }
-      remaining.splice(remaining.indexOf(winner), 1)
-
-      // 如果所有底池都分完了，退出
-      if (allPlayers.every(p => p.totalBet === 0)) break
-    }
-
-    // 理论上不应有剩余，保险起见退还
-    for (const p of allPlayers) {
-      if (p.totalBet > 0) {
-        p.chips += p.totalBet
-        this.addLog(`${p.name} 退还 ${p.totalBet}（超出赢家上限）`)
-        p.totalBet = 0
-      }
-    }
-
-    this.winnerId = this.findBestPlayer(activePlayers).id
-    this.pot = 0
+    const winner = this.findBestPlayer(activePlayers)
+    this.settleWinner(winner)
+    this.players.forEach(p => p.totalBet = 0)
     this.phase = PHASE.SETTLEMENT
   }
 
