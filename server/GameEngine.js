@@ -218,10 +218,10 @@ export class GameEngine {
       }
 
       case 'c2s:kick': {
-        // 踢脚：一脚=1个底注；踢的总金额不能超过底池；成为新的 lastRaiser
+        // 底注 = 开局每人下的钱（如 10）；踢一脚=1底注(10)，踢2脚=2底注(20)；踢的总金额不能超过底池
         const kicks = Math.floor(payload.kicks || 1)
         if (kicks < 1) return false
-        const baseBlind = this.config.baseBlind
+        const baseBlind = this.config.baseBlind // 开局每人下的钱
         const kickAmount = kicks * baseBlind
         if (kickAmount > pot) {
           this.addLog(`踢的金额不能超过底池 (${pot})`)
@@ -342,21 +342,16 @@ export class GameEngine {
     return winnings
   }
 
-  /** 找出最强玩家（按 compareHands + 位置优先级） */
+  /** 找出最强玩家（按 fuzhouPaiGow 规则 + 先叫牌者胜；位置优者视为先叫） */
   findBestPlayer(players) {
     let best = players[0]
     for (let i = 1; i < players.length; i++) {
       const p = players[i]
-      const cmp = compareHands(p.hand[0], p.hand[1], best.hand[0], best.hand[1])
-      if (cmp > 0) {
-        best = p
-      } else if (cmp === 0) {
-        const pIdx = this.players.findIndex(x => x.id === p.id)
-        const bIdx = this.players.findIndex(x => x.id === best.id)
-        if (this.getPositionPriority(pIdx) < this.getPositionPriority(bIdx)) {
-          best = p
-        }
-      }
+      const pIdx = this.players.findIndex(x => x.id === p.id)
+      const bIdx = this.players.findIndex(x => x.id === best.id)
+      const pFirst = this.getPositionPriority(pIdx) < this.getPositionPriority(bIdx)
+      const cmp = compareHands(p.hand[0], p.hand[1], best.hand[0], best.hand[1], pFirst)
+      if (cmp > 0) best = p
     }
     return best
   }

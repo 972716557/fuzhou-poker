@@ -295,6 +295,7 @@ export function gameReducer(state, action) {
           const result = compareHands(
             player.hand[0], player.hand[1],
             target.hand[0], target.hand[1],
+            true,
           )
 
           if (result > 0) {
@@ -375,12 +376,13 @@ export function gameReducer(state, action) {
         logs = addLog(logs, `${p.name}: ${p.hand[0].name} + ${p.hand[1].name} = ${rank.name}`)
       })
 
-      // 找出最大的
+      // 找出最大的（先叫牌者胜：位置靠前视为先叫）
       let winnerIdx = 0
       for (let i = 1; i < activePlayers.length; i++) {
         const cmp = compareHands(
           activePlayers[i].hand[0], activePlayers[i].hand[1],
           activePlayers[winnerIdx].hand[0], activePlayers[winnerIdx].hand[1],
+          i < winnerIdx,
         )
         if (cmp > 0) winnerIdx = i
       }

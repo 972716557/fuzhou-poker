@@ -16,8 +16,8 @@ const suitColors = {
   joker: '#9b59b6',
 }
 
-export default function Card({ card, faceDown = false, small = false, delay = 0 }) {
-  const size = small ? 'w-10 h-14 text-xs' : 'w-14 h-20 text-sm'
+export default function Card({ card, faceDown = false, small = false, tiny = false, delay = 0 }) {
+  const size = tiny ? 'w-7 h-10 text-[10px]' : small ? 'w-10 h-14 text-xs' : 'w-14 h-20 text-sm'
 
   if (faceDown) {
     return (
@@ -28,7 +28,7 @@ export default function Card({ card, faceDown = false, small = false, delay = 0 
         className={`${size} rounded-lg bg-gradient-to-br from-blue-800 to-blue-950 border-2 border-blue-600 flex items-center justify-center shadow-lg cursor-pointer select-none`}
         style={{ perspective: 1000 }}
       >
-        <div className="text-blue-400 text-lg font-bold">?</div>
+        <div className="text-blue-400 font-bold" style={{ fontSize: tiny ? 12 : 18 }}>?</div>
       </motion.div>
     )
   }
@@ -48,25 +48,25 @@ export default function Card({ card, faceDown = false, small = false, delay = 0 
     >
       {/* 左上角 */}
       <div className="absolute top-0.5 left-1 flex flex-col items-center leading-tight">
-        <span className="font-bold" style={{ fontSize: small ? 10 : 13 }}>
+        <span className="font-bold" style={{ fontSize: tiny ? 8 : small ? 10 : 13 }}>
           {card.display}
         </span>
-        <span style={{ fontSize: small ? 8 : 10 }}>
+        <span style={{ fontSize: tiny ? 6 : small ? 8 : 10 }}>
           {suitSymbols[card.suit]}
         </span>
       </div>
 
       {/* 中央大字 */}
-      <div className="font-bold" style={{ fontSize: small ? 16 : 24 }}>
+      <div className="font-bold" style={{ fontSize: tiny ? 10 : small ? 16 : 24 }}>
         {isJoker ? (card.value === 'BIG' ? '大' : '小') : suitSymbols[card.suit]}
       </div>
 
       {/* 右下角（翻转） */}
       <div className="absolute bottom-0.5 right-1 flex flex-col items-center leading-tight rotate-180">
-        <span className="font-bold" style={{ fontSize: small ? 10 : 13 }}>
+        <span className="font-bold" style={{ fontSize: tiny ? 8 : small ? 10 : 13 }}>
           {card.display}
         </span>
-        <span style={{ fontSize: small ? 8 : 10 }}>
+        <span style={{ fontSize: tiny ? 6 : small ? 8 : 10 }}>
           {suitSymbols[card.suit]}
         </span>
       </div>

@@ -5,11 +5,17 @@ import { Room } from './Room.js'
 
 const ROOM_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
 
+// 生产环境：一设备一身份；本地联调不限制
+const enforceDeviceLimit = process.env.NODE_ENV === 'production'
+
 export class RoomManager {
   constructor() {
     this.rooms = new Map()         // roomId -> Room
     this.playerRooms = new Map()   // playerId -> roomId
     this.wsPlayers = new WeakMap() // ws -> playerId
+    // 生产环境：deviceId -> { playerId, roomId, token }；playerId -> deviceId（用于离场时清理）
+    this.deviceIdToPlayer = new Map()
+    this.playerToDeviceId = new Map()
   }
 
   generateRoomId() {
@@ -54,7 +60,54 @@ export class RoomManager {
     if (room) room.handleDisconnect(playerId)
   }
 
-  createRoom(ws, { playerName, avatar }) {
+  /** 生产环境：同一设备已占用的身份，用新连接顶掉旧连接（一设备一身份） */
+  reclaimDevice(ws, deviceId) {
+    const entry = this.deviceIdToPlayer.get(deviceId)
+    if (!entry) return false
+    const { playerId, roomId, token } = entry
+    const room = this.rooms.get(roomId)
+    if (!room) {
+      this.deviceIdToPlayer.delete(deviceId)
+      this.playerToDeviceId.delete(playerId)
+      return false
+    }
+    const player = room.players.get(playerId) || room.spectators.get(playerId)
+    if (!player || player.token !== token) return false
+
+    const oldWs = player.ws
+    if (oldWs && oldWs !== ws) {
+      this.wsPlayers.delete(oldWs)
+      oldWs.close()
+    }
+
+    this.wsPlayers.set(ws, playerId)
+    ws.roomId = roomId
+    ws.playerId = playerId
+    room.handleReconnect(playerId, ws)
+
+    this.sendTo(ws, {
+      type: S2C.ROOM_JOINED,
+      payload: { roomId, playerId, token: player.token, isSpectator: player.isSpectator },
+    })
+    console.log(`[Room ${roomId}] ${player.name} (${playerId}) 同设备重连 [deviceId]`)
+    return true
+  }
+
+  /** 玩家离场时清理设备绑定（生产环境） */
+  onPlayerLeft(playerId) {
+    if (!enforceDeviceLimit) return
+    const deviceId = this.playerToDeviceId.get(playerId)
+    if (deviceId) {
+      this.deviceIdToPlayer.delete(deviceId)
+      this.playerToDeviceId.delete(playerId)
+    }
+  }
+
+  createRoom(ws, { playerName, avatar, deviceId }) {
+    if (enforceDeviceLimit && deviceId && this.deviceIdToPlayer.has(deviceId)) {
+      if (this.reclaimDevice(ws, deviceId)) return
+    }
+
     const roomId = this.generateRoomId()
     const playerId = this.generatePlayerId()
     const player = new Player(playerId, playerName || '房主', avatar || '👨', ws)
@@ -68,6 +121,11 @@ export class RoomManager {
     ws.roomId = roomId
     ws.playerId = playerId
 
+    if (enforceDeviceLimit && deviceId) {
+      this.deviceIdToPlayer.set(deviceId, { playerId, roomId, token: player.token })
+      this.playerToDeviceId.set(playerId, deviceId)
+    }
+
     player.send({
       type: S2C.ROOM_CREATED,
       payload: { roomId, playerId, token: player.token },
@@ -76,7 +134,11 @@ export class RoomManager {
     console.log(`[Room ${roomId}] Created by ${playerName} (${playerId})`)
   }
 
-  joinRoom(ws, { roomId, playerName, avatar }) {
+  joinRoom(ws, { roomId, playerName, avatar, deviceId }) {
+    if (enforceDeviceLimit && deviceId && this.deviceIdToPlayer.has(deviceId)) {
+      if (this.reclaimDevice(ws, deviceId)) return
+    }
+
     const room = this.rooms.get(roomId?.toUpperCase())
     if (!room) {
       this.sendTo(ws, { type: S2C.ROOM_ERROR, payload: { message: `房间 ${roomId} 不存在` } })
@@ -97,6 +159,11 @@ export class RoomManager {
     this.wsPlayers.set(ws, playerId)
     ws.roomId = roomId.toUpperCase()
     ws.playerId = playerId
+
+    if (enforceDeviceLimit && deviceId) {
+      this.deviceIdToPlayer.set(deviceId, { playerId, roomId: roomId.toUpperCase(), token: player.token })
+      this.playerToDeviceId.set(playerId, deviceId)
+    }
 
     player.send({
       type: S2C.ROOM_JOINED,

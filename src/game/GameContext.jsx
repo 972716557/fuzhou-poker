@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { useWebSocket } from '../hooks/useWebSocket.js'
+import { getDeviceId } from '../utils/deviceId.js'
 import { C2S, S2C } from '../../shared/protocol.js'
 
 const GameContext = createContext(null)
@@ -24,6 +25,9 @@ export function GameProvider({ children }) {
 
   // 发牌动画数据（来自服务端 DEAL_START）
   const [dealingInfo, setDealingInfo] = useState(null)
+
+  // 点击「开始游戏」后、收到 DEAL_START 前的等待态，用于即时反馈
+  const [startGamePending, setStartGamePending] = useState(false)
 
   // 消息监听
   useEffect(() => {
@@ -70,13 +74,14 @@ export function GameProvider({ children }) {
 
         case S2C.GAME_STATE:
           setGameState(msg.payload)
-          // 当进入 BETTING 阶段，清除发牌动画
           if (msg.payload.phase === 'BETTING' || msg.payload.phase === 'SETTLEMENT' || msg.payload.phase === 'WAITING') {
             setDealingInfo(null)
+            setStartGamePending(false)
           }
           break
 
         case S2C.DEAL_START:
+          setStartGamePending(false)
           setDealingInfo(msg.payload)
           break
 
@@ -92,6 +97,7 @@ export function GameProvider({ children }) {
           break
 
         case S2C.ERROR:
+          setStartGamePending(false)
           console.warn('Server error:', msg.payload.message)
           break
       }
@@ -101,11 +107,11 @@ export function GameProvider({ children }) {
   // ---- Action 函数 ----
 
   const createRoom = useCallback((name, avatar) => {
-    send({ type: C2S.CREATE_ROOM, payload: { playerName: name, avatar } })
+    send({ type: C2S.CREATE_ROOM, payload: { playerName: name, avatar, deviceId: getDeviceId() } })
   }, [send])
 
   const joinRoom = useCallback((roomId, name, avatar) => {
-    send({ type: C2S.JOIN_ROOM, payload: { roomId, playerName: name, avatar } })
+    send({ type: C2S.JOIN_ROOM, payload: { roomId, playerName: name, avatar, deviceId: getDeviceId() } })
   }, [send])
 
   const leaveRoom = useCallback(() => {
@@ -117,6 +123,7 @@ export function GameProvider({ children }) {
   }, [send])
 
   const startGame = useCallback(() => {
+    setStartGamePending(true)
     send({ type: C2S.START_GAME, payload: {} })
   }, [send])
 
@@ -163,6 +170,7 @@ export function GameProvider({ children }) {
     roomState,
     gameState,
     dealingInfo,
+    startGamePending,
     myPlayer,
     isMyTurn,
     isSpectator,

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useGame } from '../game/GameContext.jsx'
 import PlayerSeat from './PlayerSeat.jsx'
@@ -8,28 +8,22 @@ import DealingAnimation from './DealingAnimation.jsx'
 import Card from './Card.jsx'
 import { PHASE } from '../../shared/constants.js'
 
-// 桌面椭圆占视口宽度比例，越大桌子越宽
-const TABLE_WIDTH_RATIO = 0.92
+const MOBILE_BREAKPOINT = 768
 
 /**
  * 座位在桌子边缘（与绿色椭圆边界重合）
- * 椭圆与桌面 div 同尺寸：宽 tableWidth*TABLE_WIDTH_RATIO，高 availH
+ * 椭圆与桌面 div 同尺寸：宽 width*tableRatio，高 availH
+ * 手机端缩小 tableRatio 和 padding，保证左右玩家不超出视口
  */
-function calculateSeatPositions(count, width, height, myIndex) {
-  const TOP_PAD = 56
-  const BOT_PAD = 180 // 底部留出足够空间，保证“我”的头像+手牌完整显示、不被裁切
-
-  const availH = height - TOP_PAD - BOT_PAD
+function calculateSeatPositions(count, width, height, myIndex, { tableRatio, topPad, botPad }) {
+  const availH = height - topPad - botPad
   const centerX = width / 2
-  const centerY = TOP_PAD + availH / 2
-
-  // 与桌面椭圆一致：半宽、半高
-  const radiusX = (width * TABLE_WIDTH_RATIO) / 2
+  const centerY = topPad + availH / 2
+  const radiusX = (width * tableRatio) / 2
   const radiusY = availH / 2
 
   const myAngle = Math.PI / 2
   const positions = new Array(count)
-
   for (let i = 0; i < count; i++) {
     const offset = (i - myIndex + count) % count
     const angle = myAngle + (2 * Math.PI * offset) / count
@@ -41,11 +35,30 @@ function calculateSeatPositions(count, width, height, myIndex) {
   return positions
 }
 
+function useWindowSize() {
+  const [size, setSize] = useState(() => ({
+    width: typeof window !== 'undefined' ? window.innerWidth : 1200,
+    height: typeof window !== 'undefined' ? window.innerHeight : 800,
+  }))
+  useEffect(() => {
+    const onResize = () => setSize({ width: window.innerWidth, height: window.innerHeight })
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  return size
+}
+
 export default function GameBoard() {
   const { gameState, roomState, dealingInfo, connected, connectionState, actions, isSpectator, myPlayer } = useGame()
+  const { width: tableWidth, height: tableHeight } = useWindowSize()
 
-  const tableWidth = typeof window !== 'undefined' ? window.innerWidth : 1200
-  const tableHeight = typeof window !== 'undefined' ? window.innerHeight : 800
+  const isMobile = tableWidth < MOBILE_BREAKPOINT
+  const layout = useMemo(() => ({
+    tableRatio: isMobile ? 0.72 : 0.92,
+    topPad: isMobile ? 48 : 56,
+    botPad: isMobile ? 120 : 180,
+  }), [isMobile])
+  const TABLE_BOTTOM_PAD = layout.botPad
 
   const phase = gameState?.phase || PHASE.WAITING
   const players = gameState?.players || []
@@ -68,25 +81,29 @@ export default function GameBoard() {
   const effectiveMyIndex = myIndex >= 0 ? myIndex : 0
 
   const seatPositions = useMemo(
-    () => calculateSeatPositions(Math.max(displayPlayers.length, 1), tableWidth, tableHeight, effectiveMyIndex),
-    [displayPlayers.length, tableWidth, tableHeight, effectiveMyIndex],
+    () => calculateSeatPositions(Math.max(displayPlayers.length, 1), tableWidth, tableHeight, effectiveMyIndex, layout),
+    [displayPlayers.length, tableWidth, tableHeight, effectiveMyIndex, layout],
   )
 
   const handleCopyRoomId = () => {
-    const url = `${window.location.origin}?room=${roomState.roomId}`
-    navigator.clipboard?.writeText(url).catch(() => {})
+    navigator.clipboard?.writeText(roomState.roomId || '').then(() => {
+      const btn = document.querySelector('[data-copy-room-btn]')
+      if (btn) {
+        const orig = btn.textContent
+        btn.textContent = '已复制'
+        setTimeout(() => { btn.textContent = orig }, 1500)
+      }
+    }).catch(() => {})
   }
 
-  const TABLE_BOTTOM_PAD = 180
-
   return (
-    <div className="relative w-full h-full overflow-hidden bg-gray-900">
-      {/* 背景桌面：操作栏已移至中央，底部仅保留小留白 */}
-      <div className="absolute inset-0 flex items-center justify-center" style={{ paddingTop: 56, paddingBottom: TABLE_BOTTOM_PAD }}>
+    <div className="relative w-full h-full overflow-hidden bg-gray-900 min-h-0">
+      {/* 背景桌面：PC 大椭圆，手机端缩小保证左右玩家不溢出 */}
+      <div className="absolute inset-0 flex items-center justify-center" style={{ paddingTop: layout.topPad, paddingBottom: TABLE_BOTTOM_PAD }}>
         <div
           className="rounded-[50%] border-4 border-amber-900/60 shadow-2xl"
           style={{
-            width: tableWidth * TABLE_WIDTH_RATIO,
+            width: tableWidth * layout.tableRatio,
             height: '100%',
             background: 'radial-gradient(ellipse at center, #1a6b35 0%, #145528 50%, #0f3d1d 100%)',
             boxShadow: '0 0 60px rgba(26, 92, 46, 0.3), inset 0 0 80px rgba(0,0,0,0.3)',
@@ -145,13 +162,13 @@ export default function GameBoard() {
         >
           {myPlayer.hand && myPlayer.hand.length === 2 ? (
             <>
-              <Card card={myPlayer.hand[0]} small delay={0} />
-              <Card card={myPlayer.hand[1]} small delay={0.1} />
+              <Card card={myPlayer.hand[0]} small tiny={isMobile} delay={0} />
+              <Card card={myPlayer.hand[1]} small tiny={isMobile} delay={0.1} />
             </>
           ) : (
             <>
-              <Card faceDown small delay={0} />
-              <Card faceDown small delay={0.1} />
+              <Card faceDown small tiny={isMobile} delay={0} />
+              <Card faceDown small tiny={isMobile} delay={0.1} />
             </>
           )}
         </div>
@@ -165,6 +182,7 @@ export default function GameBoard() {
           index={index}
           position={seatPositions[index]}
           isCurrentTurn={phase === PHASE.BETTING && gameState?.currentPlayerId === player.id}
+          compact={isMobile}
         />
       ))}
 
@@ -213,9 +231,11 @@ export default function GameBoard() {
             <span className="text-gray-400 text-xs">房间</span>
             <span className="text-yellow-300 font-mono font-bold tracking-widest">{roomState.roomId}</span>
             <button
+              type="button"
+              data-copy-room-btn
               onClick={handleCopyRoomId}
-              className="text-gray-500 hover:text-white text-xs transition"
-              title="复制邀请链接"
+              className="text-gray-500 hover:text-white text-xs transition whitespace-nowrap"
+              title="复制房间号"
             >
               复制
             </button>

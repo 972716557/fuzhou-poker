@@ -4,7 +4,7 @@ import { useGame } from '../game/GameContext.jsx'
 import { PHASE, ACTION_BAR_H, DEFAULT_CONFIG } from '../../shared/constants.js'
 
 export default function ControlPanel() {
-  const { gameState, roomState, myPlayer, isMyTurn, isSpectator, actions } = useGame()
+  const { gameState, roomState, myPlayer, isMyTurn, isSpectator, startGamePending, actions } = useGame()
 
   const [showKickMenu, setShowKickMenu] = useState(false)
 
@@ -47,13 +47,20 @@ export default function ControlPanel() {
           </div>
           {isHost ? (
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={startGamePending ? {} : { scale: 1.05 }}
+              whileTap={startGamePending ? {} : { scale: 0.95 }}
               onClick={actions.startGame}
-              disabled={playerCount < 2}
-              className="px-8 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-bold rounded-xl shadow-lg hover:from-green-500 hover:to-green-600 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={playerCount < 2 || startGamePending}
+              className="px-8 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-bold rounded-xl shadow-lg hover:from-green-500 hover:to-green-600 text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[140px]"
             >
-              开始游戏
+              {startGamePending ? (
+                <>
+                  <span className="inline-block w-4 h-4 border-2 border-white/60 border-t-white rounded-full animate-spin" />
+                  发牌中...
+                </>
+              ) : (
+                '开始游戏'
+              )}
             </motion.button>
           ) : (
             <div className="text-gray-500 text-sm">等待房主开始...</div>
@@ -168,9 +175,10 @@ export default function ControlPanel() {
                   exit={{ opacity: 0, y: 10 }}
                   className="absolute bottom-full mb-2 left-0 bg-gray-900 rounded-lg shadow-xl border border-gray-700 p-2 min-w-[140px] max-h-[200px] overflow-y-auto z-30"
                 >
-                  <div className="text-xs text-gray-400 mb-1 text-center">踢几脚？</div>
+                  <div className="text-xs text-gray-400 mb-1 text-center">踢几脚？一脚=1底注({baseBlind})</div>
                   {Array.from({ length: Math.min(maxKicks, 10) }, (_, i) => i + 1).map((n) => {
-                    const kickPayAmount = currentBet + n * baseBlind
+                    const kickAdd = n * baseBlind
+                    const kickPayAmount = currentBet + kickAdd
                     const kickNames = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十']
                     return (
                       <button
@@ -181,7 +189,7 @@ export default function ControlPanel() {
                         }}
                         className="block w-full text-left px-3 py-1.5 text-sm text-white hover:bg-gray-700 rounded transition-colors"
                       >
-                        踢{kickNames[n - 1] || n}脚 <span className="text-amber-400">({kickPayAmount})</span>
+                        踢{kickNames[n - 1] || n}脚 <span className="text-amber-400">+{kickAdd} 共{kickPayAmount}</span>
                       </button>
                     )
                   })}

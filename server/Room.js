@@ -46,6 +46,7 @@ export class Room {
     const player = this.players.get(playerId) || this.spectators.get(playerId)
     if (!player) return
 
+    this.roomManager.onPlayerLeft(playerId)
     this.spectators.delete(playerId)
 
     if (this.players.has(playerId)) {
