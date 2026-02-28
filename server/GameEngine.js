@@ -32,7 +32,6 @@ export class GameEngine {
     this.startPlayerIndex = 0
     this.callBetCount = 0
     this.lastAction = null
-    this.lastRaiserId = null  // 最后一个主动提高注额的玩家 id
     this.players = [] // 由 Room 设置
   }
 
@@ -108,8 +107,6 @@ export class GameEngine {
     this.dealingState = null
     this.callBetCount = 0
     this.lastAction = null
-    // 底注相当于起始玩家定注，他是第一个"叫"的人
-    this.lastRaiserId = this.players[startPlayerIndex]?.id || null
 
     this.addLog(`发牌完毕！底注 ${this.config.baseBlind}`)
   }
@@ -146,7 +143,7 @@ export class GameEngine {
 
     switch (actionType) {
       case 'c2s:bet': {
-        // 跟注：不改变 lastRaiserId
+        // 跟注：重置自己的 wantsToOpen
         const betAmount = currentBet
         let betLabel = '跟注'
         if (player.chips < betAmount) {
@@ -163,34 +160,13 @@ export class GameEngine {
           pot += betAmount
           this.addLog(`${player.name} 跟注 ${betAmount}`)
         }
+        player.wantsToOpen = false
         this.lastAction = { playerId, label: betLabel, ts: Date.now() }
         break
       }
 
-      case 'c2s:raise': {
-        // 加注：成为新的 lastRaiser
-        const raiseAmount = payload.amount || currentBet * 2
-        if (player.chips < raiseAmount) {
-          pot += player.chips
-          player.currentBet += player.chips
-          player.totalBet += player.chips
-          player.chips = 0
-          this.addLog(`${player.name} 全押加注`)
-        } else {
-          player.chips -= raiseAmount
-          player.currentBet += raiseAmount
-          player.totalBet += raiseAmount
-          pot += raiseAmount
-          currentBet = raiseAmount
-          this.addLog(`${player.name} 加注到 ${raiseAmount}`)
-        }
-        this.lastRaiserId = playerId
-        this.lastAction = { playerId, label: '加注', ts: Date.now() }
-        break
-      }
-
       case 'c2s:call_bet': {
-        // 叫牌（恰提/带上）：成为新的 lastRaiser
+        // 叫牌（恰提/带上）：翻倍 currentBet，重置所有其他人的 wantsToOpen
         const newBet = currentBet * 2
         const payAmount = newBet
         let callLabel
@@ -211,8 +187,11 @@ export class GameEngine {
           callLabel = this.callBetCount === 0 ? '恰提' : '带上'
           this.addLog(`${player.name} ${callLabel}！下注 ${payAmount}`)
         }
+        // 加注行为：重置所有其他活跃玩家的 wantsToOpen
+        this.getActivePlayers().forEach(p => {
+          if (p.id !== playerId) p.wantsToOpen = false
+        })
         this.callBetCount++
-        this.lastRaiserId = playerId
         this.lastAction = { playerId, label: callLabel, ts: Date.now() }
         break
       }
@@ -246,7 +225,10 @@ export class GameEngine {
           currentBet = newBet
           this.addLog(`${player.name} 踢${kicks}脚！下注 ${payAmount}，跟注额升至 ${newBet}`)
         }
-        this.lastRaiserId = playerId
+        // 加注行为：重置所有其他活跃玩家的 wantsToOpen
+        this.getActivePlayers().forEach(p => {
+          if (p.id !== playerId) p.wantsToOpen = false
+        })
         this.lastAction = { playerId, label: kickLabel, ts: Date.now() }
         break
       }
@@ -256,19 +238,15 @@ export class GameEngine {
         player.isActive = false
         this.addLog(`${player.name} 弃牌`)
         this.lastAction = { playerId, label: '弃牌', ts: Date.now() }
-        // 如果弃牌的人恰好是 lastRaiser，把 lastRaiserId 转移给下一个活跃玩家
-        if (this.lastRaiserId === playerId) {
-          const nextActive = this.getNextActiveIndex(playerIndex)
-          this.lastRaiserId = nextActive !== -1 ? this.players[nextActive]?.id : null
-        }
         break
       }
 
       case 'c2s:showdown': {
-        this.pot = pot
-        this.currentBet = currentBet
-        this.doShowdown()
-        return true
+        // 提议开牌：免费，设置 wantsToOpen = true，传给下一家
+        player.wantsToOpen = true
+        this.addLog(`${player.name} 提议开牌`)
+        this.lastAction = { playerId, label: '开牌', ts: Date.now() }
+        break
       }
 
       default:
@@ -278,7 +256,7 @@ export class GameEngine {
     this.pot = pot
     this.currentBet = currentBet
 
-    // 检查是否只剩一人
+    // 条件1：检查是否只剩一人（剩者为王）
     const activePlayers = this.getActivePlayers()
     if (activePlayers.length <= 1) {
       const winner = activePlayers[0]
@@ -300,18 +278,15 @@ export class GameEngine {
       return true
     }
 
-    // 移到下一个活跃玩家
-    const nextIndex = this.getNextActiveIndex(playerIndex)
-    const nextPlayer = this.players[nextIndex]
-
-    // 回合结束判断：下一个要行动的人就是 lastRaiser，说明其他人都已响应
-    // lastRaiser 是"最后一个主动提高注额的人"，他不需要再行动
-    if (nextPlayer && nextPlayer.id === this.lastRaiserId) {
-      // 所有人都响应了，进入亮牌
-      this.addLog('所有人已响应，自动亮牌')
+    // 条件2：全员共识开牌 — 所有活跃玩家都提议了开牌
+    if (activePlayers.every(p => p.wantsToOpen)) {
+      this.addLog('全员同意开牌！')
       this.doShowdown()
       return true
     }
+
+    // 移到下一个活跃玩家
+    const nextIndex = this.getNextActiveIndex(playerIndex)
 
     // 更新圈数（仅用于显示）
     if (nextIndex <= playerIndex) {
@@ -409,7 +384,6 @@ export class GameEngine {
       bettingRound: this.bettingRound,
       currentPlayerId: this.getCurrentPlayerId(),
       dealerPlayerId: this.players[this.dealerIndex]?.id || null,
-      lastRaiserId: this.lastRaiserId,
       config: this.config,
       winnerId: this.winnerId,
       lastAction: this.lastAction,

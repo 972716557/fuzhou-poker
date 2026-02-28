@@ -135,10 +135,6 @@ export function GameProvider({ children }) {
     send({ type: C2S.PLAYER_BET, payload: {} })
   }, [send])
 
-  const raise = useCallback((amount) => {
-    send({ type: C2S.PLAYER_RAISE, payload: { amount } })
-  }, [send])
-
   const callBet = useCallback(() => {
     send({ type: C2S.PLAYER_CALL_BET, payload: {} })
   }, [send])
@@ -181,7 +177,6 @@ export function GameProvider({ children }) {
       startGame,
       nextRound,
       bet,
-      raise,
       callBet,
       kick,
       fold,

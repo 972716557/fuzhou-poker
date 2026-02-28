@@ -42,6 +42,7 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn, com
     '弃牌': 'bg-gray-500 text-white',
     '比牌': 'bg-purple-500 text-white',
     '加注': 'bg-orange-500 text-white',
+    '开牌': 'bg-purple-500 text-white',
   }
 
   // 手牌：只有服务端发来 hand !== null 才有牌可看
@@ -141,6 +142,17 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn, com
           className={`text-orange-300 bg-orange-900/50 rounded-full ${compact ? 'text-[10px] px-1 py-0.5 mt-0' : 'text-xs px-1.5 mt-0.5'}`}
         >
           注:{player.currentBet}
+        </motion.div>
+      )}
+
+      {/* 提议开牌标记 */}
+      {player.wantsToOpen && isActive && phase === PHASE.BETTING && (
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className={`text-purple-300 bg-purple-900/60 rounded-full ${compact ? 'text-[10px] px-1 py-0.5 mt-0' : 'text-xs px-1.5 mt-0.5'}`}
+        >
+          想开牌
         </motion.div>
       )}
 

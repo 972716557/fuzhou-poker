@@ -109,6 +109,7 @@ export default function ControlPanel() {
   const betAmount = currentBet
   const callBetAmount = currentBet * 2
   const pot = gameState?.pot || 0
+  const alreadyWantsOpen = myPlayer?.wantsToOpen || false
   const baseBlind = config.baseBlind ?? DEFAULT_CONFIG.baseBlind
   const maxKicks = baseBlind > 0 ? Math.min(10, Math.floor(pot / baseBlind)) : 0
   const canKick = maxKicks >= 1
@@ -198,13 +199,17 @@ export default function ControlPanel() {
             </AnimatePresence>
           </div>
 
-          {/* 亮牌 */}
+          {/* 提议开牌 */}
           <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={actions.showdown}
-            className="flex-1 py-2 bg-purple-600 text-white rounded-lg font-bold text-sm active:bg-purple-500"
+            whileTap={{ scale: alreadyWantsOpen ? 1 : 0.95 }}
+            onClick={() => !alreadyWantsOpen && actions.showdown()}
+            className={`flex-1 py-2 rounded-lg font-bold text-sm ${
+              alreadyWantsOpen
+                ? 'bg-purple-900 text-purple-400 cursor-not-allowed'
+                : 'bg-purple-600 text-white active:bg-purple-500'
+            }`}
           >
-            亮牌
+            {alreadyWantsOpen ? '已提议开牌' : '提议开牌'}
           </motion.button>
 
         </div>

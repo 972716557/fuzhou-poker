@@ -9,7 +9,6 @@ export const C2S = {
   LEAVE_ROOM:     'c2s:leave_room',
   START_GAME:     'c2s:start_game',
   PLAYER_BET:     'c2s:bet',
-  PLAYER_RAISE:   'c2s:raise',
   PLAYER_CALL_BET:'c2s:call_bet',
   PLAYER_KICK:    'c2s:kick',
   PLAYER_FOLD:    'c2s:fold',

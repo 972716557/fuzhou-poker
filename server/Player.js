@@ -18,6 +18,7 @@ export class Player {
     this.currentBet = 0
     this.totalBet = 0   // 本局累计出注（用于 side pot 结算）
     this.isActive = true
+    this.wantsToOpen = false  // 是否提议开牌
   }
 
   resetRound() {
@@ -26,6 +27,7 @@ export class Player {
     this.currentBet = 0
     this.totalBet = 0
     this.isActive = true
+    this.wantsToOpen = false
   }
 
   send(msg) {
@@ -44,6 +46,7 @@ export class Player {
       hasFolded: this.hasFolded,
       currentBet: this.currentBet,
       isActive: this.isActive,
+      wantsToOpen: this.wantsToOpen,
       seatIndex: this.seatIndex,
       hand: null,
       isConnected: this.isConnected,

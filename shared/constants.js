@@ -18,7 +18,6 @@ export const PHASE = {
 export const ACTION = {
   LOOK: 'LOOK',         // 看牌
   BET: 'BET',           // 跟注
-  RAISE: 'RAISE',       // 加注
   KICK: 'KICK',         // 踢一脚
   FOLD: 'FOLD',         // 弃牌
   COMPARE: 'COMPARE',   // 比牌

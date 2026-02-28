@@ -180,7 +180,6 @@ export class Room {
       }
 
       case C2S.PLAYER_BET:
-      case C2S.PLAYER_RAISE:
       case C2S.PLAYER_CALL_BET:
       case C2S.PLAYER_KICK:
       case C2S.PLAYER_FOLD:
