@@ -19,6 +19,9 @@ export class Player {
     this.totalBet = 0   // 本局累计出注（用于 side pot 结算）
     this.isActive = true
     this.wantsToOpen = false  // 是否提议开牌
+    this.hasKicked = false    // 是否已踢过（每局只能踢一次）
+    this.hasParticipated = false  // 是否实质参与（踢/恰提/带上后不可弃牌）
+    this.hasCalledBet = false    // 是否恰提/带上过（之后不可踢）
   }
 
   resetRound() {
@@ -28,6 +31,9 @@ export class Player {
     this.totalBet = 0
     this.isActive = true
     this.wantsToOpen = false
+    this.hasKicked = false
+    this.hasParticipated = false
+    this.hasCalledBet = false
   }
 
   send(msg) {
@@ -47,6 +53,9 @@ export class Player {
       currentBet: this.currentBet,
       isActive: this.isActive,
       wantsToOpen: this.wantsToOpen,
+      hasKicked: this.hasKicked,
+      hasParticipated: this.hasParticipated,
+      hasCalledBet: this.hasCalledBet,
       seatIndex: this.seatIndex,
       hand: null,
       isConnected: this.isConnected,

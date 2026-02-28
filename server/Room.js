@@ -202,16 +202,17 @@ export class Room {
     if (this.dealAnimTimer) clearTimeout(this.dealAnimTimer)
 
     const dealInfo = this.engine.startRound()
+    this.broadcastGameState()  // 先广播 phase=DEALING 的游戏状态
     this.broadcast({ type: S2C.DEAL_START, payload: dealInfo })
 
-    // 5 秒超时：若有人未回传动画完成，也强制进入下注
+    // 4 秒超时：若有人未回传动画完成，也强制进入下注
     this.dealAnimTimer = setTimeout(() => {
       if (this.engine.phase === PHASE.DEALING) {
         this.engine.completeDeal()
         this.sendDealComplete()
         this.broadcastGameState()
       }
-    }, 5000)
+    }, 4000)
   }
 
   checkAllAnimDone() {

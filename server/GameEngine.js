@@ -3,7 +3,7 @@
  * 从 gameReducer.js 移植，改为 class 形式，直接变更状态
  */
 
-import { dealCards, shuffleDeck } from '../shared/deck.js'
+import { shuffleDeck } from '../shared/deck.js'
 import { getHandRank, compareHands } from '../shared/handRank.js'
 import { PHASE, DEFAULT_CONFIG } from '../shared/constants.js'
 
@@ -31,8 +31,10 @@ export class GameEngine {
     this.dealingState = null
     this.startPlayerIndex = 0
     this.callBetCount = 0
+    this.lastCallBetPlayerId = null
     this.lastAction = null
     this.players = [] // 由 Room 设置
+    this.deck = []    // 跨局持久化牌库
   }
 
   setPlayers(players) {
@@ -53,16 +55,35 @@ export class GameEngine {
     this.logs = [{ message, timestamp, id: Date.now() + Math.random() }, ...this.logs].slice(0, 50)
   }
 
-  /** 开始新一局：洗牌、切牌、计算起始位 */
+  /** 开始新一局：从持久牌库抽牌、切牌、计算起始位 */
   startRound() {
     this.players.forEach(p => p.resetRound())
 
-    const { hands } = dealCards(this.players.length)
-    const shuffledForCut = shuffleDeck()
-    const cutCard = shuffledForCut[0]
+    // 持久牌库：需要 1(切牌) + playerCount*2(手牌) 张
+    const cardsNeeded = 1 + this.players.length * 2
+    if (this.deck.length < cardsNeeded) {
+      this.deck = shuffleDeck()
+      this.addLog('🔄 牌库不足，重新洗牌（32张）')
+    }
+
+    // 从牌库顶部抽取切牌（用完即弃，不放回）
+    const cutCard = this.deck.pop()
     const cutValue = getCutCardValue(cutCard)
 
-    this.dealerIndex = (this.dealerIndex + 1) % this.players.length
+    // 从牌库顶部依次发牌（每人2张）
+    const hands = []
+    for (let i = 0; i < this.players.length; i++) {
+      hands.push([this.deck.pop(), this.deck.pop()])
+    }
+
+    // 数牌起点：上一局赢家开始数，第一局从房主（index 0）开始
+    if (this.winnerId) {
+      const winnerIdx = this.players.findIndex(p => p.id === this.winnerId)
+      this.dealerIndex = winnerIdx >= 0 ? winnerIdx : (this.dealerIndex + 1) % this.players.length
+    } else {
+      // 第一局：从房主（seatOrder[0]）开始
+      this.dealerIndex = 0
+    }
     const startPlayerIndex = (this.dealerIndex + cutValue - 1) % this.players.length
 
     this.roundNumber++
@@ -73,11 +94,12 @@ export class GameEngine {
     this.currentBet = this.config.baseBlind
     this.currentPlayerIndex = startPlayerIndex
     this.callBetCount = 0
+    this.lastCallBetPlayerId = null
     this.lastAction = null
 
     this.startPlayerIndex = startPlayerIndex
     this.dealingState = { cutCard, cutValue, startPlayerIndex, hands }
-    this.addLog(`第 ${this.roundNumber} 局开始！切牌：${cutCard.name}，点数 ${cutValue}`)
+    this.addLog(`第 ${this.roundNumber} 局开始！切牌：${cutCard.name}，点数 ${cutValue}（剩余 ${this.deck.length} 张）`)
 
     return {
       cutCard,
@@ -105,7 +127,7 @@ export class GameEngine {
         const pay = Math.min(ante, p.chips)
         p.chips -= pay
         p.currentBet = pay
-        p.totalBet = pay
+        p.totalBet = 0   // 底注不计入可赢取额度，只有叫牌阶段的下注才算
         this.pot += pay
       })
       this.addLog(`发牌完毕！补仓底注 ${this.config.baseBlind}，底池 ${this.pot}`)
@@ -123,15 +145,17 @@ export class GameEngine {
     this.currentPlayerIndex = startPlayerIndex
     this.dealingState = null
     this.callBetCount = 0
+    this.lastCallBetPlayerId = null
     this.lastAction = null
   }
 
-  /** 获取下一个活跃玩家 */
+  /** 获取下一个可操作玩家（跳过弃牌和已开牌的） */
   getNextActiveIndex(fromIndex) {
     let next = (fromIndex + 1) % this.players.length
     let attempts = 0
     while (attempts < this.players.length) {
-      if (this.players[next].isActive && !this.players[next].hasFolded) return next
+      const p = this.players[next]
+      if (p.isActive && !p.hasFolded && !p.wantsToOpen) return next
       next = (next + 1) % this.players.length
       attempts++
     }
@@ -181,17 +205,15 @@ export class GameEngine {
       }
 
       case 'c2s:call_bet': {
-        // 叫牌（恰提/带上）：翻倍 currentBet，下注上限 = 底池
-        const newBet = Math.min(currentBet * 2, pot)
-        if (newBet <= currentBet) return false // 底池不够，无法加注
-        const payAmount = newBet
+        // 叫牌（恰提/带上）：费用 = 当前底池
+        const payAmount = pot
+        if (payAmount <= 0) return false
         let callLabel
         if (player.chips < payAmount) {
           pot += player.chips
           player.currentBet += player.chips
           player.totalBet += player.chips
           player.chips = 0
-          currentBet = newBet
           callLabel = 'All in'
           this.addLog(`${player.name} All in!`)
         } else {
@@ -199,21 +221,24 @@ export class GameEngine {
           player.currentBet += payAmount
           player.totalBet += payAmount
           pot += payAmount
-          currentBet = newBet
           callLabel = this.callBetCount === 0 ? '恰提' : '带上'
           this.addLog(`${player.name} ${callLabel}！下注 ${payAmount}`)
         }
-        // 加注行为：重置所有其他活跃玩家的 wantsToOpen
-        this.getActivePlayers().forEach(p => {
-          if (p.id !== playerId) p.wantsToOpen = false
-        })
+        currentBet = payAmount
+        player.hasParticipated = true
+        player.hasCalledBet = true
         this.callBetCount++
+        this.lastCallBetPlayerId = playerId
         this.lastAction = { playerId, label: callLabel, ts: Date.now() }
         break
       }
 
       case 'c2s:kick': {
-        // 踢一脚：下注上限 = 底池
+        // 踢一脚：每局只能踢一次，下注上限 = 底池
+        if (player.hasKicked) {
+          this.addLog(`${player.name} 本局已踢过，无法再踢`)
+          return false
+        }
         const kicks = Math.floor(payload.kicks || 1)
         if (kicks < 1) return false
         const baseBlind = this.config.baseBlind
@@ -223,14 +248,16 @@ export class GameEngine {
           this.addLog(`底池不足，无法踢 (${pot})`)
           return false
         }
-        const payAmount = newBet
+        // 只付踢的差额部分，不含原 currentBet
+        const payAmount = newBet - currentBet
         let kickLabel = `踢${kicks}脚`
         if (player.chips < payAmount) {
-          pot += player.chips
-          player.currentBet += player.chips
-          player.totalBet += player.chips
+          const actualPay = player.chips
+          pot += actualPay
+          player.currentBet += actualPay
+          player.totalBet += actualPay
+          currentBet = currentBet + actualPay
           player.chips = 0
-          currentBet = newBet
           kickLabel = 'All in'
           this.addLog(`${player.name} All in (踢${kicks}脚，筹码不足)`)
         } else {
@@ -241,10 +268,10 @@ export class GameEngine {
           currentBet = newBet
           this.addLog(`${player.name} 踢${kicks}脚！下注 ${payAmount}，跟注额升至 ${newBet}`)
         }
-        // 加注行为：重置所有其他活跃玩家的 wantsToOpen
-        this.getActivePlayers().forEach(p => {
-          if (p.id !== playerId) p.wantsToOpen = false
-        })
+        player.hasKicked = true
+        player.hasParticipated = true
+        // 踢一脚算回应，重置 lastCallBetPlayerId 允许上家再次带上
+        this.lastCallBetPlayerId = null
         this.lastAction = { playerId, label: kickLabel, ts: Date.now() }
         break
       }
@@ -272,7 +299,7 @@ export class GameEngine {
     this.pot = pot
     this.currentBet = currentBet
 
-    // 条件1：检查是否只剩一人（剩者为王）
+    // 条件1：检查是否只剩一人（其余全部弃牌）
     const activePlayers = this.getActivePlayers()
     if (activePlayers.length <= 1) {
       const winner = activePlayers[0]
@@ -284,14 +311,19 @@ export class GameEngine {
       return true
     }
 
-    // 条件2：全员共识开牌 — 所有活跃玩家都提议了开牌
-    if (activePlayers.every(p => p.wantsToOpen)) {
-      this.addLog('全员同意开牌！')
+    // 条件2：强制开牌 — 所有活跃玩家中仅剩 ≤1 人未开牌
+    const nonOpened = activePlayers.filter(p => !p.wantsToOpen)
+    if (nonOpened.length <= 1) {
+      if (nonOpened.length === 1) {
+        nonOpened[0].wantsToOpen = true
+        this.addLog(`所有其他玩家已开牌，${nonOpened[0].name} 强制开牌`)
+      }
+      this.addLog('全员开牌！')
       this.doShowdown()
       return true
     }
 
-    // 移到下一个活跃玩家
+    // 移到下一个可操作玩家（跳过已弃牌和已开牌的）
     const nextIndex = this.getNextActiveIndex(playerIndex)
 
     // 更新圈数（仅用于显示）
@@ -318,9 +350,8 @@ export class GameEngine {
   }
 
   /**
-   * 结算赢家：收益上限为自身本轮下注额，剩余底池结转至下一轮。
-   * winnerPayout = min(pot, 2 × winner.totalBet)
-   *   = 本金退还 + 盈利（盈利上限 = totalBet）
+   * 结算赢家：收益 = min(pot, 2 × totalBet)，totalBet 只含叫牌阶段下注（不含底注）。
+   * 赢家拿走本金 + 等额盈利，剩余底池结转下一轮。
    */
   settleWinner(winner) {
     const ownBet = winner.totalBet
@@ -358,11 +389,15 @@ export class GameEngine {
       pot: this.pot,
       currentBet: this.currentBet,
       bettingRound: this.bettingRound,
+      callBetCount: this.callBetCount,
+      lastCallBetPlayerId: this.lastCallBetPlayerId,
       currentPlayerId: this.getCurrentPlayerId(),
       dealerPlayerId: this.players[this.dealerIndex]?.id || null,
+      startPlayerId: this.players[this.startPlayerIndex]?.id || null,
       config: this.config,
       winnerId: this.winnerId,
       lastAction: this.lastAction,
+      remainingDeckCount: this.deck.length,
       logs: this.logs,
     }
   }

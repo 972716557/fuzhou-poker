@@ -10,17 +10,16 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn, com
 
   const phase = gameState?.phase || PHASE.WAITING
   const winnerId = gameState?.winnerId
-  const dealerPlayerId = gameState?.dealerPlayerId
+  const startPlayerId = gameState?.startPlayerId
 
   const isMe = player.id === roomState.playerId
   const isActive = player.isActive && !player.hasFolded
   const isWinner = winnerId === player.id
-  const isDealer = dealerPlayerId === player.id
+  const isFirstCard = startPlayerId === player.id && phase !== PHASE.WAITING
   const isDealing = !!dealingInfo && phase === PHASE.DEALING
   const isDisconnected = player.isConnected === false
   const showCards = phase === PHASE.SHOWDOWN || phase === PHASE.SETTLEMENT
 
-  // 操作提示浮动标签
   const [actionLabel, setActionLabel] = useState(null)
   const lastActionTsRef = useRef(null)
 
@@ -34,25 +33,22 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn, com
     }
   }, [gameState?.lastAction, player.id])
 
-  const labelColorMap = {
-    '恰提': 'bg-yellow-400 text-black',
-    '带上': 'bg-orange-400 text-black',
-    'All in': 'bg-red-500 text-white',
-    '跟注': 'bg-green-600 text-white',
-    '弃牌': 'bg-gray-500 text-white',
-    '比牌': 'bg-purple-500 text-white',
-    '加注': 'bg-orange-500 text-white',
-    '开牌': 'bg-purple-500 text-white',
+  const labelStyles = {
+    '恰提': 'bg-warn/20 text-warn border-warn/30',
+    '带上': 'bg-orange-400/20 text-orange-300 border-orange-400/30',
+    'All in': 'bg-danger/20 text-danger border-danger/30',
+    '跟注': 'bg-accent/20 text-accent border-accent/30',
+    '弃牌': 'bg-white/5 text-txt-muted border-white/10',
+    '比牌': 'bg-purple-400/20 text-purple-300 border-purple-400/30',
+    '开牌': 'bg-purple-400/20 text-purple-300 border-purple-400/30',
   }
 
-  // 手牌：只有服务端发来 hand !== null 才有牌可看
   const hasHand = player.hand && player.hand.length === 2
   const handRank = hasHand ? getHandRank(player.hand[0], player.hand[1]) : null
   const rankColor = handRank ? getHandColor(handRank) : '#fff'
 
-  // 自己：整块在座位点上方（-100%），牌绝不伸入底部操作栏
-  // 其他玩家：居中对齐（-50%）
   const translateY = isMe ? '-100%' : '-50%'
+  const avatarSize = compact ? 'w-8 h-8 text-base' : 'w-11 h-11 text-xl'
 
   return (
     <motion.div
@@ -64,99 +60,133 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn, com
       }}
       initial={{ scale: 0, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      transition={{ delay: index * 0.05, type: 'spring', stiffness: 300 }}
+      transition={{ delay: index * 0.03, type: 'spring', stiffness: 300, damping: 25 }}
     >
-      {/* 操作提示浮动标签 */}
+      {/* Action label */}
       <AnimatePresence>
         {actionLabel && (
           <motion.div
             key={actionLabel + lastActionTsRef.current}
-            initial={{ opacity: 0, y: 5, scale: 0.5 }}
+            initial={{ opacity: 0, y: 4, scale: 0.8 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.5 }}
-            transition={{ duration: 0.3 }}
-            style={{ position: 'absolute', top: compact ? -20 : -28, left: '50%', transform: 'translateX(-50%)', zIndex: 30 }}
-            className={`whitespace-nowrap font-bold rounded-full shadow-lg ${compact ? 'text-[10px] px-2 py-0.5' : 'text-xs px-3 py-1'} ${labelColorMap[actionLabel] || 'bg-gray-600 text-white'}`}
+            exit={{ opacity: 0, y: -8, scale: 0.8 }}
+            transition={{ duration: 0.25 }}
+            style={{ position: 'absolute', top: compact ? -18 : -24, left: '50%', transform: 'translateX(-50%)', zIndex: 30 }}
+            className={`whitespace-nowrap font-semibold rounded-full border ${compact ? 'text-[9px] px-2 py-0.5' : 'text-[11px] px-2.5 py-0.5'} ${labelStyles[actionLabel] || 'bg-white/5 text-txt-secondary border-white/10'}`}
           >
             {actionLabel}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* 玩家头像：手机端 compact 时缩小，保证在桌缘不压桌 */}
-      <motion.div
-        className={`relative rounded-full flex items-center justify-center border-2 shadow-lg
-          ${compact ? 'w-9 h-9 text-lg' : 'w-12 h-12 text-2xl'}
-          ${isCurrentTurn ? 'border-yellow-400 ring-2 ring-yellow-400 ring-opacity-50' : ''}
-          ${isWinner ? 'border-green-400 ring-2 ring-green-400' : ''}
-          ${!isActive && phase !== PHASE.WAITING ? 'opacity-40 grayscale' : ''}
-          ${isDisconnected ? 'opacity-30' : ''}
-          ${isMe ? 'border-emerald-400' : 'border-gray-500'}
-        `}
-        style={{ background: isActive ? '#2d3748' : '#1a1a2e' }}
-        animate={isCurrentTurn ? { scale: [1, 1.1, 1] } : {}}
-        transition={{ repeat: Infinity, duration: 1.5 }}
-      >
-        <span>{player.avatar}</span>
-
-        {/* 庄家标记 */}
-        {isDealer && (
-          <div className={`absolute -top-0.5 -right-0.5 bg-red-500 rounded-full flex items-center justify-center text-white font-bold shadow ${compact ? 'w-3.5 h-3.5 text-[8px]' : 'w-5 h-5 text-xs'}`}>
-            D
-          </div>
+      {/* Avatar */}
+      <div className="relative">
+        {/* First card — rotating ambient glow */}
+        {isFirstCard && (
+          <motion.div
+            className="absolute rounded-full"
+            style={{
+              inset: compact ? -2.5 : -3.5,
+              background: 'conic-gradient(from 0deg, rgba(212,168,67,0.6), rgba(184,134,11,0.15), rgba(212,168,67,0.6))',
+              filter: compact ? 'blur(2px)' : 'blur(3px)',
+            }}
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
+          />
         )}
 
-        {/* 断线标记 */}
+        <motion.div
+          className={`relative rounded-full flex items-center justify-center ${avatarSize}
+            ${isCurrentTurn ? 'ring-2 ring-accent ring-offset-1 ring-offset-surface' : ''}
+            ${isWinner ? 'ring-2 ring-gold ring-offset-1 ring-offset-surface' : ''}
+            ${!isActive && phase !== PHASE.WAITING ? 'opacity-30' : ''}
+            ${isDisconnected ? 'opacity-20' : ''}
+          `}
+          style={{
+            background: isMe
+              ? 'linear-gradient(135deg, #1a3a2e, #0f2920)'
+              : 'linear-gradient(135deg, #1f2937, #111827)',
+            border: isMe
+              ? '1.5px solid rgba(52, 211, 153, 0.4)'
+              : '1.5px solid rgba(255,255,255,0.08)',
+          }}
+          animate={isCurrentTurn ? { scale: [1, 1.06, 1] } : {}}
+          transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+        >
+          <span>{player.avatar}</span>
+        </motion.div>
+
+        {/* Disconnected */}
         {isDisconnected && (
-          <div className={`absolute -top-0.5 -left-0.5 bg-red-700 rounded-full flex items-center justify-center text-white shadow ${compact ? 'w-3.5 h-3.5 text-[8px]' : 'w-5 h-5'}`} style={{ fontSize: compact ? 8 : 10 }}>
+          <div className={`absolute -top-0.5 -left-0.5 bg-danger/80 rounded-full flex items-center justify-center text-white shadow-sm ${compact ? 'w-3 h-3 text-[7px]' : 'w-4 h-4 text-[9px]'}`}>
             !
           </div>
         )}
 
-        {/* "你"标记 */}
+        {/* Me marker */}
         {isMe && (
-          <div className={`absolute -bottom-0.5 -left-0.5 bg-emerald-600 rounded-full flex items-center justify-center text-white font-bold shadow ${compact ? 'w-3.5 h-3.5 text-[8px]' : 'w-5 h-5 text-xs'}`}>
+          <div className={`absolute -bottom-0.5 -left-0.5 bg-accent rounded-full flex items-center justify-center text-surface font-bold shadow-sm ${compact ? 'w-3 h-3 text-[7px]' : 'w-4 h-4 text-[9px]'}`}>
             我
           </div>
         )}
-      </motion.div>
-
-      {/* 玩家名称 */}
-      <div className={`font-bold truncate text-center
-        ${compact ? 'text-[10px] mt-0.5 max-w-[52px]' : 'text-xs mt-1 max-w-[70px]'}
-        ${isMe ? 'text-emerald-300' : isCurrentTurn ? 'text-yellow-300' : isActive ? 'text-gray-200' : 'text-gray-600'}
-      `}>
-        {player.name}
       </div>
 
-      {/* 筹码 */}
-      <div className={`${compact ? 'text-[10px]' : 'text-xs'} ${isActive ? 'text-yellow-400' : 'text-gray-600'}`}>
-        ${player.chips}
+      {/* Name + Chips group */}
+      <div className={`flex flex-col items-center ${compact ? 'mt-0.5 gap-0' : 'mt-1 gap-0'}`}>
+        <div className={`font-medium truncate text-center leading-tight
+          ${compact ? 'text-[9px] max-w-[48px]' : 'text-[11px] max-w-[64px]'}
+          ${isMe ? 'text-accent' : isCurrentTurn ? 'text-warn' : isActive ? 'text-txt-secondary' : 'text-txt-muted'}
+        `}>
+          {player.name}
+        </div>
+        <div className={`tabular-nums leading-tight ${compact ? 'text-[8px]' : 'text-[10px]'} ${isActive ? 'text-gold/80' : 'text-txt-muted'}`}>
+          {player.chips}
+        </div>
       </div>
 
-      {/* 本轮下注 */}
-      {player.currentBet > 0 && (
+      {/* First card — "先手" pill */}
+      {isFirstCard && (
         <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          className={`text-orange-300 bg-orange-900/50 rounded-full ${compact ? 'text-[10px] px-1 py-0.5 mt-0' : 'text-xs px-1.5 mt-0.5'}`}
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          className={`${compact ? 'text-[7px] px-1.5 mt-0' : 'text-[9px] px-2 mt-0.5'} py-px rounded-full font-semibold tracking-wide`}
+          style={{
+            background: 'linear-gradient(135deg, rgba(212,168,67,0.2), rgba(184,134,11,0.12))',
+            color: '#d4a843',
+            border: '1px solid rgba(212,168,67,0.3)',
+            boxShadow: '0 0 8px rgba(212,168,67,0.15)',
+          }}
         >
-          注:{player.currentBet}
+          先手
         </motion.div>
       )}
 
-      {/* 提议开牌标记 */}
-      {player.wantsToOpen && isActive && phase === PHASE.BETTING && (
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          className={`text-purple-300 bg-purple-900/60 rounded-full ${compact ? 'text-[10px] px-1 py-0.5 mt-0' : 'text-xs px-1.5 mt-0.5'}`}
-        >
-          想开牌
-        </motion.div>
+      {/* Bet + Status badges */}
+      {(player.currentBet > 0 || (player.wantsToOpen && isActive && phase === PHASE.BETTING)) && (
+        <div className={`flex items-center gap-1 ${compact ? 'mt-0' : 'mt-0.5'}`}>
+          {player.currentBet > 0 && (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className={`badge bg-orange-400/10 text-orange-300 border border-orange-400/20 ${compact ? 'text-[7px] px-1 py-0' : 'text-[9px] px-1.5 py-0'}`}
+            >
+              {player.currentBet}
+            </motion.div>
+          )}
+          {player.wantsToOpen && isActive && phase === PHASE.BETTING && (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className={`badge bg-purple-400/10 text-purple-300 border border-purple-400/20 ${compact ? 'text-[7px] px-1 py-0' : 'text-[9px] px-1.5 py-0'}`}
+            >
+              开
+            </motion.div>
+          )}
+        </div>
       )}
 
-      {/* 牌面（发牌阶段隐藏）；“我”的手牌已移到桌面上显示，此处不重复渲染；compact 时用更小牌 */}
+      {/* Cards (not me, not dealing) */}
       {!isDealing && phase !== PHASE.WAITING && !isMe && (
         <div className={`flex gap-0.5 ${compact ? 'mt-0.5' : 'mt-1'}`}>
           {hasHand ? (
@@ -175,7 +205,7 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn, com
         </div>
       )}
 
-      {/* 摊牌后显示牌型（Level 10 金色闪烁 / Level 9 紫色震动 / Level 7 红色加粗） */}
+      {/* Hand rank on showdown */}
       {showCards && handRank && (() => {
         const lv = handRank.level
         const isZhiZun = lv === LEVEL.ZHI_ZUN
@@ -183,38 +213,38 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn, com
         const isTianJiuFanWang = lv === LEVEL.TIAN_JIU_FAN_WANG
         return (
           <motion.div
-            initial={{ opacity: 0, y: 5 }}
+            initial={{ opacity: 0, y: 4 }}
             animate={
               isZhiZun
-                ? { opacity: [1, 0.85, 1], scale: [1, 1.08, 1] }
+                ? { opacity: [1, 0.85, 1], scale: [1, 1.06, 1] }
                 : isTopPair
-                  ? { x: [0, -3, 3, -2, 2, 0] }
+                  ? { x: [0, -2, 2, -1, 1, 0] }
                   : { opacity: 1, y: 0 }
             }
             transition={
               isZhiZun
                 ? { duration: 1.2, repeat: Infinity }
                 : isTopPair
-                  ? { duration: 0.5, repeat: Infinity, repeatDelay: 0.8 }
+                  ? { duration: 0.5, repeat: Infinity, repeatDelay: 1 }
                   : { duration: 0.3 }
             }
-            className={`rounded-full ${compact ? 'text-[10px] mt-0 px-1.5 py-0.5' : 'text-xs mt-0.5 px-2 py-0.5'} ${
+            className={`rounded-full ${compact ? 'text-[9px] mt-0 px-1.5 py-0.5' : 'text-[11px] mt-0.5 px-2.5 py-0.5'} ${
               isZhiZun
-                ? 'font-black text-amber-300'
+                ? 'font-black text-gold-light'
                 : isTopPair
                   ? 'font-bold text-purple-300'
                   : isTianJiuFanWang
-                    ? 'font-black text-red-400'
-                    : 'font-bold'
+                    ? 'font-bold text-danger'
+                    : 'font-semibold'
             }`}
             style={{
               ...((!isZhiZun && !isTopPair && !isTianJiuFanWang) && { color: rankColor }),
-              backgroundColor: 'rgba(0,0,0,0.7)',
+              backgroundColor: 'rgba(0,0,0,0.6)',
               ...(isZhiZun && {
-                textShadow: '0 0 8px rgba(251,191,36,0.9), 0 0 16px rgba(245,158,11,0.6)',
+                textShadow: '0 0 8px rgba(232, 197, 106, 0.8)',
               }),
               ...(isTianJiuFanWang && {
-                textShadow: '0 0 4px rgba(248,113,113,0.8)',
+                textShadow: '0 0 4px rgba(248, 113, 113, 0.7)',
               }),
             }}
           >
@@ -223,20 +253,20 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn, com
         )
       })()}
 
-      {/* 弃牌标记 */}
+      {/* Folded */}
       {player.hasFolded && (
-        <div className={`text-red-400 font-bold ${compact ? 'text-[10px]' : 'text-xs'}`}>弃牌</div>
+        <div className={`text-danger/60 font-medium ${compact ? 'text-[9px]' : 'text-[11px]'}`}>弃牌</div>
       )}
 
-      {/* 赢家动画 */}
+      {/* Winner */}
       {isWinner && (
         <motion.div
           initial={{ scale: 0 }}
-          animate={{ scale: [1, 1.2, 1] }}
-          transition={{ repeat: Infinity, duration: 1 }}
-          className={`font-bold text-green-400 ${compact ? 'text-[10px] mt-0' : 'text-sm mt-0.5'}`}
+          animate={{ scale: [1, 1.1, 1] }}
+          transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
+          className={`font-bold text-accent ${compact ? 'text-[10px] mt-0' : 'text-xs mt-0.5'}`}
         >
-          赢家!
+          赢家
         </motion.div>
       )}
     </motion.div>
