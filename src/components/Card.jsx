@@ -36,7 +36,37 @@ export default function Card({ card, faceDown = false, small = false, tiny = fal
   if (!card) return null
 
   const isJoker = card.suit === 'joker'
+  const isBigJoker = isJoker && card.value === 'BIG'
   const color = suitColors[card.suit] || '#333'
+
+  if (isJoker) {
+    return (
+      <motion.div
+        initial={{ rotateY: -180, opacity: 0, scale: 0.5 }}
+        animate={{ rotateY: 0, opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, delay, type: 'spring', stiffness: 200 }}
+        className={`${size} rounded-lg flex flex-col items-center justify-center shadow-lg select-none relative overflow-hidden border-2`}
+        style={{
+          perspective: 1000,
+          background: isBigJoker
+            ? 'linear-gradient(135deg, #fef2f2 0%, #fecaca 50%, #f87171 100%)'
+            : 'linear-gradient(135deg, #f4f4f5 0%, #e4e4e7 50%, #a1a1aa 100%)',
+          borderColor: isBigJoker ? '#dc2626' : '#52525b',
+          color: isBigJoker ? '#b91c1c' : '#27272a',
+        }}
+      >
+        <div className="absolute top-0.5 left-1 text-[8px] font-bold opacity-70" style={{ fontSize: tiny ? 6 : small ? 7 : 9 }}>
+          JOKER
+        </div>
+        <div className="font-black text-center leading-tight" style={{ fontSize: tiny ? 8 : small ? 11 : 16 }}>
+          {card.display}
+        </div>
+        <div className="absolute bottom-0.5 right-1 text-[8px] font-bold opacity-70 rotate-180" style={{ fontSize: tiny ? 6 : small ? 7 : 9 }}>
+          JOKER
+        </div>
+      </motion.div>
+    )
+  }
 
   return (
     <motion.div
@@ -58,7 +88,7 @@ export default function Card({ card, faceDown = false, small = false, tiny = fal
 
       {/* 中央大字 */}
       <div className="font-bold" style={{ fontSize: tiny ? 10 : small ? 16 : 24 }}>
-        {isJoker ? (card.value === 'BIG' ? '大' : '小') : suitSymbols[card.suit]}
+        {suitSymbols[card.suit]}
       </div>
 
       {/* 右下角（翻转） */}

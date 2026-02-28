@@ -40,9 +40,9 @@ export const PAIR_NAMES = {
  * type: 牌类型
  */
 export const FULL_DECK = [
-  // 至尊 - 大王小王
-  { id: 'joker_big',   name: '大王', suit: 'joker',   value: 'BIG',   points: 0, pairRank: -1, type: CARD_TYPE.JOKER_BIG,   display: '大', color: 'red'   },
-  { id: 'joker_small', name: '小王', suit: 'joker',   value: 'SMALL', points: 0, pairRank: -1, type: CARD_TYPE.JOKER_SMALL, display: '小', color: 'black' },
+  // 至尊 - 大鬼小鬼（鬼牌）
+  { id: 'joker_big',   name: '大鬼', suit: 'joker',   value: 'BIG',   points: 0, pairRank: -1, type: CARD_TYPE.JOKER_BIG,   display: '大鬼', color: 'red'   },
+  { id: 'joker_small', name: '小鬼', suit: 'joker',   value: 'SMALL', points: 0, pairRank: -1, type: CARD_TYPE.JOKER_SMALL, display: '小鬼', color: 'black' },
 
   // 天 - 红QQ (♥♦)
   { id: 'q_heart',   name: 'Q♥', suit: 'heart',   value: 'Q', points: 0, pairRank: 15, type: CARD_TYPE.NORMAL, display: 'Q', color: 'red' },

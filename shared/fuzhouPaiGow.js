@@ -24,9 +24,9 @@ const TOP_RANK = {
 }
 
 export const FUZHOU_DECK = [
-  // 王牌 (2张)
-  { id: 'joker_big', name: '大王', suit: 'joker', value: 'BIG', points: 6, rank: TOP_RANK.NORMAL },
-  { id: 'joker_small', name: '小王', suit: 'joker', value: 'SMALL', points: 3, rank: TOP_RANK.NORMAL },
+  // 王牌/鬼牌 (2张)
+  { id: 'joker_big', name: '大鬼', suit: 'joker', value: 'BIG', points: 6, rank: TOP_RANK.NORMAL },
+  { id: 'joker_small', name: '小鬼', suit: 'joker', value: 'SMALL', points: 3, rank: TOP_RANK.NORMAL },
 
   // 天牌 (2张) 红桃Q、方块Q
   { id: 'q_heart', name: '红桃Q', suit: 'heart', value: 'Q', points: 12, rank: TOP_RANK.RED_Q },

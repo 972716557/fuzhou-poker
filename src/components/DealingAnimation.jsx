@@ -219,7 +219,7 @@ export default function DealingAnimation({ seatPositions }) {
                       <span className="text-xs">{suitSymbols[cutCard.suit]}</span>
                     </div>
                     <div className="font-bold text-3xl">
-                      {isJoker ? (cutCard.value === 'BIG' ? '大' : '小') : suitSymbols[cutCard.suit]}
+                      {isJoker ? cutCard.display : suitSymbols[cutCard.suit]}
                     </div>
                     <div className="absolute bottom-1 right-1.5 flex flex-col items-center leading-tight rotate-180">
                       <span className="font-bold text-sm">{cutCard.display}</span>
