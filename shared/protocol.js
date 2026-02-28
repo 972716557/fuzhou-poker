@@ -15,6 +15,7 @@ export const C2S = {
   PLAYER_SHOWDOWN:'c2s:showdown',
   NEXT_ROUND:     'c2s:next_round',
   DEAL_ANIM_DONE: 'c2s:deal_anim_done',
+  BORROW:         'c2s:borrow',
   RECONNECT:      'c2s:reconnect',
   PING:           'c2s:ping',
 }

@@ -180,6 +180,23 @@ export class Room {
         break
       }
 
+      case C2S.BORROW: {
+        const amount = Math.floor(msg.payload?.amount || 0)
+        if (amount <= 0 || amount > 10000) {
+          player.send({ type: S2C.ERROR, payload: { message: '借款金额须在 1~10000 之间' } })
+          return
+        }
+        player.chips += amount
+        player.initialChips += amount
+        player.borrowed += amount
+        this.engine.addLog(`${player.name} 借入 ${amount}`)
+        this.broadcastPlayerList()
+        if (this.engine.isRoundActive()) {
+          this.broadcastGameState()
+        }
+        break
+      }
+
       case C2S.DEAL_ANIM_DONE: {
         this.dealAnimReady.add(player.id)
         this.checkAllAnimDone()
@@ -278,7 +295,7 @@ export class Room {
       payload: {
         players: this.seatOrder.map(id => {
           const p = this.players.get(id)
-          return p ? { id: p.id, name: p.name, avatar: p.avatar, chips: p.chips, isConnected: p.isConnected } : null
+          return p ? { id: p.id, name: p.name, avatar: p.avatar, chips: p.chips, initialChips: p.initialChips, borrowed: p.borrowed, isConnected: p.isConnected } : null
         }).filter(Boolean),
         hostId: this.hostId,
         spectators: [...this.spectators.values()].map(s => ({

@@ -8,6 +8,8 @@ export class Player {
     this.ws = ws
     this.token = crypto.randomUUID()
     this.chips = 1000
+    this.initialChips = 1000  // 初始金额（含借款）
+    this.borrowed = 0         // 累计借款总额
     this.isConnected = true
     this.isSpectator = false
     this.seatIndex = -1
@@ -49,6 +51,8 @@ export class Player {
       name: this.name,
       avatar: this.avatar,
       chips: this.chips,
+      initialChips: this.initialChips,
+      borrowed: this.borrowed,
       hasFolded: this.hasFolded,
       currentBet: this.currentBet,
       isActive: this.isActive,

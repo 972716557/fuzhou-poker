@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../game/GameContext.jsx'
 import PlayerSeat from './PlayerSeat.jsx'
 import ControlPanel from './ControlPanel.jsx'
@@ -73,6 +73,8 @@ export default function GameBoard() {
     [displayPlayers.length, tableWidth, tableHeight, effectiveMyIndex, layout],
   )
 
+  const [showBorrow, setShowBorrow] = useState(false)
+  const [borrowAmount, setBorrowAmount] = useState('')
   const [copied, setCopied] = useState(false)
   const handleCopyRoomId = () => {
     navigator.clipboard?.writeText(roomState.roomId || '').then(() => {
@@ -228,13 +230,73 @@ export default function GameBoard() {
         </div>
       )}
 
-      {/* Leave */}
-      <button
-        onClick={actions.leaveRoom}
-        className="absolute left-2 bottom-2 safe-bottom glass-dark rounded-full px-3 py-1.5 text-txt-muted hover:text-txt-secondary text-[11px] transition-colors z-10 min-h-[32px]"
-      >
-        离开
-      </button>
+      {/* Bottom buttons */}
+      <div className="absolute left-2 right-2 bottom-2 safe-bottom flex items-end justify-between z-10">
+        <button
+          onClick={actions.leaveRoom}
+          className="glass-dark rounded-full px-3 py-1.5 text-txt-muted hover:text-txt-secondary text-[11px] transition-colors min-h-[32px]"
+        >
+          离开
+        </button>
+
+        {/* Borrow */}
+        {!isSpectator && (
+          <div className="relative">
+            <AnimatePresence>
+              {showBorrow && (
+                <motion.div
+                  initial={{ opacity: 0, y: 6, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 6, scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute bottom-full mb-2 right-0 glass rounded-xl p-3 z-30 w-[180px]"
+                >
+                  <div className="text-[10px] text-txt-muted mb-2">借入金额（上限 10000）</div>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10000"
+                    value={borrowAmount}
+                    onChange={e => setBorrowAmount(e.target.value)}
+                    placeholder="输入金额"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-[12px] text-txt outline-none focus:border-accent/50 tabular-nums mb-2"
+                  />
+                  <div className="flex gap-1.5">
+                    {[100, 500, 1000].map(v => (
+                      <button
+                        key={v}
+                        onClick={() => setBorrowAmount(String(v))}
+                        className="flex-1 text-[10px] py-1 rounded-md bg-white/5 text-txt-secondary hover:bg-white/10 transition-colors"
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => {
+                      const amt = parseInt(borrowAmount)
+                      if (amt > 0 && amt <= 10000) {
+                        actions.borrow(amt)
+                        setBorrowAmount('')
+                        setShowBorrow(false)
+                      }
+                    }}
+                    className="w-full mt-2 py-1.5 rounded-lg bg-accent/80 text-surface text-[12px] font-semibold hover:bg-accent transition-colors"
+                  >
+                    确认借入
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <button
+              onClick={() => setShowBorrow(!showBorrow)}
+              className="glass-dark rounded-full px-3 py-1.5 text-txt-muted hover:text-txt-secondary text-[11px] transition-colors min-h-[32px]"
+            >
+              借钱
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

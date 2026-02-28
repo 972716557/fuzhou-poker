@@ -151,6 +151,10 @@ export function GameProvider({ children }) {
     send({ type: C2S.PLAYER_SHOWDOWN, payload: {} })
   }, [send])
 
+  const borrow = useCallback((amount) => {
+    send({ type: C2S.BORROW, payload: { amount } })
+  }, [send])
+
   const dealAnimDone = useCallback(() => {
     send({ type: C2S.DEAL_ANIM_DONE, payload: {} })
   }, [send])
@@ -181,6 +185,7 @@ export function GameProvider({ children }) {
       kick,
       fold,
       showdown,
+      borrow,
       dealAnimDone,
     },
   }

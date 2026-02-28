@@ -141,6 +141,9 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn, com
         </div>
         <div className={`tabular-nums leading-tight ${compact ? 'text-[8px]' : 'text-[10px]'} ${isActive ? 'text-gold/80' : 'text-txt-muted'}`}>
           {player.chips}
+          {player.initialChips != null && (
+            <span className="text-white/20 ml-0.5">/{player.initialChips}</span>
+          )}
         </div>
       </div>
 
