@@ -38,7 +38,7 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn, com
     '带上': 'bg-orange-400/20 text-orange-300 border-orange-400/30',
     'All in': 'bg-danger/20 text-danger border-danger/30',
     '跟注': 'bg-accent/20 text-accent border-accent/30',
-    '弃牌': 'bg-white/5 text-txt-muted border-white/10',
+    '弃牌': 'bg-white/[0.06] text-txt-muted border-white/[0.08]',
     '比牌': 'bg-purple-400/20 text-purple-300 border-purple-400/30',
     '开牌': 'bg-purple-400/20 text-purple-300 border-purple-400/30',
   }
@@ -49,6 +49,9 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn, com
 
   const translateY = isMe ? '-100%' : '-50%'
   const avatarSize = compact ? 'w-8 h-8 text-base' : 'w-11 h-11 text-xl'
+
+  // Profit/loss indicator
+  const chipsDiff = player.initialChips != null ? player.chips - player.initialChips : null
 
   return (
     <motion.div
@@ -62,17 +65,16 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn, com
       animate={{ scale: 1, opacity: 1 }}
       transition={{ delay: index * 0.03, type: 'spring', stiffness: 300, damping: 25 }}
     >
-      {/* Action label */}
+      {/* Action label — floats above via negative margin */}
       <AnimatePresence>
         {actionLabel && (
           <motion.div
             key={actionLabel + lastActionTsRef.current}
-            initial={{ opacity: 0, y: 4, scale: 0.8 }}
+            initial={{ opacity: 0, y: 4, scale: 0.85 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.8 }}
-            transition={{ duration: 0.25 }}
-            style={{ position: 'absolute', top: compact ? -18 : -24, left: '50%', transform: 'translateX(-50%)', zIndex: 30 }}
-            className={`whitespace-nowrap font-semibold rounded-full border ${compact ? 'text-[9px] px-2 py-0.5' : 'text-[11px] px-2.5 py-0.5'} ${labelStyles[actionLabel] || 'bg-white/5 text-txt-secondary border-white/10'}`}
+            exit={{ opacity: 0, y: -6, scale: 0.85 }}
+            transition={{ duration: 0.2 }}
+            className={`whitespace-nowrap font-semibold rounded-full border z-30 ${compact ? 'text-[9px] px-2 py-0.5 mb-0.5' : 'text-[11px] px-2.5 py-0.5 mb-1'} ${labelStyles[actionLabel] || 'bg-white/[0.06] text-txt-secondary border-white/[0.08]'}`}
           >
             {actionLabel}
           </motion.div>
@@ -105,12 +107,12 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn, com
           style={{
             background: isMe
               ? 'linear-gradient(135deg, #1a3a2e, #0f2920)'
-              : 'linear-gradient(135deg, #1f2937, #111827)',
+              : 'linear-gradient(135deg, #1e2328, #14171b)',
             border: isMe
-              ? '1.5px solid rgba(52, 211, 153, 0.4)'
-              : '1.5px solid rgba(255,255,255,0.08)',
+              ? '1.5px solid rgba(52, 211, 153, 0.35)'
+              : '1px solid rgba(255,255,255,0.06)',
           }}
-          animate={isCurrentTurn ? { scale: [1, 1.06, 1] } : {}}
+          animate={isCurrentTurn ? { scale: [1, 1.05, 1] } : {}}
           transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
         >
           <span>{player.avatar}</span>
@@ -131,7 +133,7 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn, com
         )}
       </div>
 
-      {/* Name + Chips group */}
+      {/* Name + Chips */}
       <div className={`flex flex-col items-center ${compact ? 'mt-0.5 gap-0' : 'mt-1 gap-0'}`}>
         <div className={`font-medium truncate text-center leading-tight
           ${compact ? 'text-[9px] max-w-[48px]' : 'text-[11px] max-w-[64px]'}
@@ -139,10 +141,12 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn, com
         `}>
           {player.name}
         </div>
-        <div className={`tabular-nums leading-tight ${compact ? 'text-[8px]' : 'text-[10px]'} ${isActive ? 'text-gold/80' : 'text-txt-muted'}`}>
-          {player.chips}
-          {player.initialChips != null && (
-            <span className="text-white/20 ml-0.5">/{player.initialChips}</span>
+        <div className={`tabular-nums leading-tight flex items-center gap-0.5 ${compact ? 'text-[8px]' : 'text-[10px]'}`}>
+          <span className={isActive ? 'text-gold/80' : 'text-txt-muted'}>{player.chips}</span>
+          {chipsDiff !== null && chipsDiff !== 0 && phase !== PHASE.WAITING && (
+            <span className={`${compact ? 'text-[7px]' : 'text-[9px]'} ${chipsDiff > 0 ? 'text-accent/50' : 'text-danger/45'}`}>
+              {chipsDiff > 0 ? '+' : ''}{chipsDiff}
+            </span>
           )}
         </div>
       </div>
@@ -155,10 +159,10 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn, com
           transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           className={`${compact ? 'text-[7px] px-1.5 mt-0' : 'text-[9px] px-2 mt-0.5'} py-px rounded-full font-semibold tracking-wide`}
           style={{
-            background: 'linear-gradient(135deg, rgba(212,168,67,0.2), rgba(184,134,11,0.12))',
+            background: 'linear-gradient(135deg, rgba(212,168,67,0.18), rgba(184,134,11,0.1))',
             color: '#d4a843',
-            border: '1px solid rgba(212,168,67,0.3)',
-            boxShadow: '0 0 8px rgba(212,168,67,0.15)',
+            border: '1px solid rgba(212,168,67,0.25)',
+            boxShadow: '0 0 8px rgba(212,168,67,0.12)',
           }}
         >
           先手
@@ -172,7 +176,7 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn, com
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              className={`badge bg-orange-400/10 text-orange-300 border border-orange-400/20 ${compact ? 'text-[7px] px-1 py-0' : 'text-[9px] px-1.5 py-0'}`}
+              className={`badge bg-orange-400/10 text-orange-300 border border-orange-400/15 ${compact ? 'text-[7px] px-1 py-0' : 'text-[9px] px-1.5 py-0'}`}
             >
               {player.currentBet}
             </motion.div>
@@ -181,7 +185,7 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn, com
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              className={`badge bg-purple-400/10 text-purple-300 border border-purple-400/20 ${compact ? 'text-[7px] px-1 py-0' : 'text-[9px] px-1.5 py-0'}`}
+              className={`badge bg-purple-400/10 text-purple-300 border border-purple-400/15 ${compact ? 'text-[7px] px-1 py-0' : 'text-[9px] px-1.5 py-0'}`}
             >
               开
             </motion.div>
@@ -191,7 +195,7 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn, com
 
       {/* Cards (not me, not dealing) */}
       {!isDealing && phase !== PHASE.WAITING && !isMe && (
-        <div className={`flex gap-0.5 ${compact ? 'mt-0.5' : 'mt-1'}`}>
+        <div className={`flex ${compact ? 'gap-0.5 mt-0.5' : 'gap-1 mt-1'}`}>
           {hasHand ? (
             <>
               <Card card={player.hand[0]} small tiny={compact} delay={0} />
@@ -242,7 +246,7 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn, com
             }`}
             style={{
               ...((!isZhiZun && !isTopPair && !isTianJiuFanWang) && { color: rankColor }),
-              backgroundColor: 'rgba(0,0,0,0.6)',
+              backgroundColor: 'rgba(0,0,0,0.55)',
               ...(isZhiZun && {
                 textShadow: '0 0 8px rgba(232, 197, 106, 0.8)',
               }),
@@ -258,14 +262,14 @@ export default function PlayerSeat({ player, index, position, isCurrentTurn, com
 
       {/* Folded */}
       {player.hasFolded && (
-        <div className={`text-danger/60 font-medium ${compact ? 'text-[9px]' : 'text-[11px]'}`}>弃牌</div>
+        <div className={`text-danger/50 font-medium ${compact ? 'text-[9px]' : 'text-[11px]'}`}>弃牌</div>
       )}
 
       {/* Winner */}
       {isWinner && (
         <motion.div
           initial={{ scale: 0 }}
-          animate={{ scale: [1, 1.1, 1] }}
+          animate={{ scale: [1, 1.08, 1] }}
           transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
           className={`font-bold text-accent ${compact ? 'text-[10px] mt-0' : 'text-xs mt-0.5'}`}
         >

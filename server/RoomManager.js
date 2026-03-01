@@ -103,7 +103,13 @@ export class RoomManager {
     }
   }
 
-  createRoom(ws, { playerName, avatar, deviceId }) {
+  createRoom(ws, { playerName, avatar, deviceId, verifyCode }) {
+    // 验证码校验
+    if (verifyCode !== '你需要找晨哥') {
+      this.sendTo(ws, { type: S2C.ROOM_ERROR, payload: { message: '验证码错误' } })
+      return
+    }
+
     if (enforceDeviceLimit && deviceId && this.deviceIdToPlayer.has(deviceId)) {
       if (this.reclaimDevice(ws, deviceId)) return
     }

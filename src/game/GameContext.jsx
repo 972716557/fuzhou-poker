@@ -106,8 +106,8 @@ export function GameProvider({ children }) {
 
   // ---- Action 函数 ----
 
-  const createRoom = useCallback((name, avatar) => {
-    send({ type: C2S.CREATE_ROOM, payload: { playerName: name, avatar, deviceId: getDeviceId() } })
+  const createRoom = useCallback((name, avatar, verifyCode) => {
+    send({ type: C2S.CREATE_ROOM, payload: { playerName: name, avatar, deviceId: getDeviceId(), verifyCode } })
   }, [send])
 
   const joinRoom = useCallback((roomId, name, avatar) => {

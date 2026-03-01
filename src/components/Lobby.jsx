@@ -8,6 +8,7 @@ export default function Lobby() {
   const [name, setName] = useState('脚王')
   const [avatar, setAvatar] = useState(AVATARS[Math.floor(Math.random() * AVATARS.length)])
   const [roomIdInput, setRoomIdInput] = useState('')
+  const [verifyCode, setVerifyCode] = useState('')
   const [mode, setMode] = useState(null)
 
   useState(() => {
@@ -20,8 +21,8 @@ export default function Lobby() {
   })
 
   const handleCreate = () => {
-    if (!name.trim()) return
-    actions.createRoom(name.trim(), avatar)
+    if (!name.trim() || !verifyCode.trim()) return
+    actions.createRoom(name.trim(), avatar, verifyCode.trim())
   }
 
   const handleJoin = () => {
@@ -32,41 +33,41 @@ export default function Lobby() {
   return (
     <div className="w-full h-full bg-surface flex items-center justify-center px-5">
       <motion.div
-        initial={{ y: 20, opacity: 0 }}
+        initial={{ y: 16, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="glass rounded-3xl w-full max-w-[400px] md:max-w-[440px] p-8 md:p-10"
+        transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+        className="glass rounded-3xl w-full max-w-[400px] p-7 md:p-9"
       >
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-txt tracking-tight">抚州32张</h1>
-          <p className="text-txt-muted text-sm mt-1.5">在线博弈扑克</p>
-        </div>
+        <div className="text-center mb-7">
+          <h1 className="text-[22px] font-bold text-txt tracking-tight">抚州32张</h1>
+          <p className="text-txt-muted text-[13px] mt-2 tracking-wide">在线博弈扑克</p>
 
-        {/* Connection */}
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <div className={`w-1.5 h-1.5 rounded-full ${
-            connected ? 'bg-accent' :
-            connectionState === 'reconnecting' ? 'bg-warn animate-pulse' :
-            'bg-danger'
-          }`} />
-          <span className="text-txt-muted text-xs">
-            {connected ? '已连接' :
-             connectionState === 'reconnecting' ? '重连中...' :
-             connectionState === 'connecting' ? '连接中...' : '未连接'}
-          </span>
+          {/* Connection — inline with header */}
+          <div className="flex items-center justify-center gap-1.5 mt-3">
+            <div className={`w-1.5 h-1.5 rounded-full ${
+              connected ? 'bg-accent' :
+              connectionState === 'reconnecting' ? 'bg-warn animate-pulse' :
+              'bg-danger'
+            }`} />
+            <span className="text-txt-muted text-[11px]">
+              {connected ? '已连接' :
+               connectionState === 'reconnecting' ? '重连中...' :
+               connectionState === 'connecting' ? '连接中...' : '未连接'}
+            </span>
+          </div>
         </div>
 
         {/* Error */}
         {roomState.error && (
-          <div className="bg-danger/10 border border-danger/20 text-danger text-sm px-4 py-3 rounded-xl mb-5 text-center">
+          <div className="bg-danger/8 border border-danger/15 text-danger text-[13px] px-4 py-3 rounded-xl mb-5 text-center">
             {roomState.error}
           </div>
         )}
 
         {/* Name */}
         <div className="mb-5">
-          <label className="text-txt-secondary text-xs font-medium mb-2 block">昵称</label>
+          <label className="text-txt-secondary text-[12px] font-medium mb-2 block">昵称</label>
           <input
             type="text"
             value={name}
@@ -78,17 +79,17 @@ export default function Lobby() {
         </div>
 
         {/* Avatar */}
-        <div className="mb-8">
-          <label className="text-txt-secondary text-xs font-medium mb-3 block">头像</label>
-          <div className="grid grid-cols-8 gap-1.5">
+        <div className="mb-7">
+          <label className="text-txt-secondary text-[12px] font-medium mb-2.5 block">头像</label>
+          <div className="grid grid-cols-8 gap-2">
             {AVATARS.map((a) => (
               <button
                 key={a}
                 onClick={() => setAvatar(a)}
                 className={`aspect-square rounded-xl text-lg flex items-center justify-center transition-all duration-200 ${
                   avatar === a
-                    ? 'bg-accent/20 ring-2 ring-accent scale-105'
-                    : 'bg-surface-overlay hover:bg-surface-card'
+                    ? 'bg-accent/15 ring-[1.5px] ring-accent ring-offset-1 ring-offset-surface'
+                    : 'bg-white/[0.04] hover:bg-white/[0.08]'
                 }`}
               >
                 {a}
@@ -112,8 +113,7 @@ export default function Lobby() {
               whileTap={{ scale: 0.97 }}
               onClick={() => setMode('join')}
               disabled={!connected}
-              className="btn flex-1 bg-surface-card text-txt px-6 py-3 hover:bg-white/10"
-              style={{ border: '1px solid rgba(255,255,255,0.1)' }}
+              className="btn-secondary flex-1"
             >
               加入房间
             </motion.button>
@@ -121,18 +121,29 @@ export default function Lobby() {
         )}
 
         {mode === 'create' && (
-          <div className="space-y-3">
+          <div className="space-y-4">
+            <div>
+              <label className="text-txt-secondary text-[12px] font-medium mb-2 block">验证码</label>
+              <input
+                type="text"
+                value={verifyCode}
+                onChange={(e) => setVerifyCode(e.target.value)}
+                placeholder="请输入验证码"
+                maxLength={20}
+                className="input"
+              />
+            </div>
             <motion.button
               whileTap={{ scale: 0.97 }}
               onClick={handleCreate}
-              disabled={!connected || !name.trim()}
+              disabled={!connected || !name.trim() || !verifyCode.trim()}
               className="btn-primary w-full"
             >
               创建新房间
             </motion.button>
             <button
               onClick={() => setMode(null)}
-              className="w-full py-2.5 text-txt-muted hover:text-txt-secondary text-sm transition-colors"
+              className="w-full py-2.5 text-txt-muted hover:text-txt-secondary text-[13px] transition-colors rounded-xl hover:bg-white/[0.04]"
             >
               返回
             </button>
@@ -142,7 +153,7 @@ export default function Lobby() {
         {mode === 'join' && (
           <div className="space-y-4">
             <div>
-              <label className="text-txt-secondary text-xs font-medium mb-2 block">房间号</label>
+              <label className="text-txt-secondary text-[12px] font-medium mb-2 block">房间号</label>
               <input
                 type="text"
                 value={roomIdInput}
@@ -162,7 +173,7 @@ export default function Lobby() {
             </motion.button>
             <button
               onClick={() => setMode(null)}
-              className="w-full py-2.5 text-txt-muted hover:text-txt-secondary text-sm transition-colors"
+              className="w-full py-2.5 text-txt-muted hover:text-txt-secondary text-[13px] transition-colors rounded-xl hover:bg-white/[0.04]"
             >
               返回
             </button>

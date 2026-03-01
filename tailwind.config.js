@@ -21,19 +21,19 @@ export default {
           dark: '#b8922f',
           muted: 'rgba(212, 168, 67, 0.15)',
         },
-        // Surface system
+        // Surface system — deeper, more refined
         surface: {
-          DEFAULT: '#111315',
-          raised: '#1a1d21',
-          overlay: '#22262b',
-          card: '#2a2f36',
+          DEFAULT: '#0e1012',
+          raised: '#161a1e',
+          overlay: '#1e2228',
+          card: '#262b32',
         },
-        // Text system
+        // Text system — better hierarchy
         txt: {
-          DEFAULT: '#e8eaed',
-          secondary: '#9aa0a8',
-          muted: '#5f666e',
-          inverse: '#111315',
+          DEFAULT: '#e4e7eb',
+          secondary: '#8b929b',
+          muted: '#525960',
+          inverse: '#0e1012',
         },
         // Semantic
         accent: '#34d399',

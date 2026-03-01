@@ -66,9 +66,13 @@ export class GameEngine {
       this.addLog('🔄 牌库不足，重新洗牌（32张）')
     }
 
-    // 从牌库顶部抽取切牌（用完即弃，不放回）
+    // 从牌库顶部抽取切牌
     const cutCard = this.deck.pop()
     const cutValue = getCutCardValue(cutCard)
+
+    // 切牌用完后插回牌库随机位置（不放顶部，避免重复）
+    const insertIdx = Math.floor(Math.random() * (this.deck.length + 1))
+    this.deck.splice(insertIdx, 0, cutCard)
 
     // 从牌库顶部依次发牌（每人2张）
     const hands = []

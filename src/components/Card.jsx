@@ -128,15 +128,34 @@ export default function Card({ card, faceDown = false, small = false, tiny = fal
   const base = `${s.w} ${s.h} rounded-lg select-none shadow-card`
 
   if (faceDown) {
+    const patternSize = tiny ? 4 : small ? 5 : 6
     return (
       <motion.div
         initial={{ rotateY: 180, opacity: 0 }}
         animate={{ rotateY: 0, opacity: 1 }}
         transition={{ duration: 0.35, delay }}
-        className={`${base} bg-gradient-to-br from-blue-800 to-blue-950 border border-blue-600/50 flex items-center justify-center`}
-        style={{ perspective: 800 }}
+        className={`${base} flex items-center justify-center overflow-hidden`}
+        style={{
+          perspective: 800,
+          background: 'linear-gradient(145deg, #1e3a5f, #162d4a, #0f1f35)',
+          border: '1px solid rgba(59, 130, 246, 0.25)',
+        }}
       >
-        <div className="text-blue-400/40 font-bold" style={{ fontSize: tiny ? 10 : 16 }}>?</div>
+        {/* Diamond lattice pattern */}
+        <div
+          className="absolute inset-[2px] rounded-[5px] opacity-[0.12]"
+          style={{
+            backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent ${patternSize}px, rgba(96,165,250,0.5) ${patternSize}px, rgba(96,165,250,0.5) ${patternSize + 0.5}px), repeating-linear-gradient(-45deg, transparent, transparent ${patternSize}px, rgba(96,165,250,0.5) ${patternSize}px, rgba(96,165,250,0.5) ${patternSize + 0.5}px)`,
+          }}
+        />
+        {/* Inner border */}
+        <div
+          className="absolute rounded-[4px]"
+          style={{
+            inset: tiny ? 2 : 3,
+            border: '0.5px solid rgba(96, 165, 250, 0.15)',
+          }}
+        />
       </motion.div>
     )
   }
@@ -156,8 +175,8 @@ export default function Card({ card, faceDown = false, small = false, tiny = fal
       initial={{ rotateY: -180, opacity: 0, scale: 0.5 }}
       animate={{ rotateY: 0, opacity: 1, scale: 1 }}
       transition={{ duration: 0.4, delay, type: 'spring', stiffness: 200 }}
-      className={`${base} bg-white border border-gray-200 flex flex-col items-center justify-center relative overflow-hidden`}
-      style={{ perspective: 800, color }}
+      className={`${base} flex flex-col items-center justify-center relative overflow-hidden`}
+      style={{ perspective: 800, color, background: '#fafaf8', border: '1px solid rgba(0,0,0,0.1)' }}
     >
       <div className="absolute top-0.5 left-1 flex flex-col items-center leading-none">
         <span className="font-bold" style={{ fontSize: s.corner }}>{card.display}</span>

@@ -96,46 +96,45 @@ export default function GameBoard() {
             width: tableWidth * layout.tableRatio,
             height: '100%',
             background: 'radial-gradient(ellipse at center, #1a6b35 0%, #145528 50%, #0e3a1a 100%)',
-            border: '1.5px solid rgba(255, 255, 255, 0.06)',
-            boxShadow: '0 0 80px rgba(20, 85, 40, 0.2), inset 0 0 60px rgba(0,0,0,0.2), 0 0 0 1px rgba(42, 122, 62, 0.3)',
+            border: '1px solid rgba(255, 255, 255, 0.05)',
+            boxShadow: '0 0 80px rgba(20, 85, 40, 0.15), inset 0 0 60px rgba(0,0,0,0.2), 0 0 0 1px rgba(42, 122, 62, 0.2)',
           }}
         >
-          <div className="flex flex-col items-center justify-center h-full">
+          <div className="flex flex-col items-center justify-center h-full gap-1">
             {phase !== PHASE.WAITING && !isDealing && (
               <motion.div
-                initial={{ opacity: 0, y: 8 }}
+                initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
                 className="flex flex-col items-center"
               >
-                <div className="text-white/25 text-[11px] font-medium tracking-wider uppercase mb-2">
-                  Round {roundNumber}
+                <div className="text-white/18 text-[10px] font-medium tracking-[0.2em] uppercase">
+                  第 {roundNumber} 局
                 </div>
-                <div className="text-white/30 text-[10px] font-medium mb-0.5">底池</div>
+                <div className="w-5 h-px bg-white/[0.08] my-2.5" />
+                <div className="text-white/22 text-[10px] font-medium tracking-wider mb-1.5">底池</div>
                 <motion.div
                   key={pot}
-                  initial={{ scale: 1.15 }}
+                  initial={{ scale: 1.1 }}
                   animate={{ scale: 1 }}
                   transition={{ type: 'spring', stiffness: 300 }}
-                  className="text-3xl md:text-4xl font-bold text-gold-light tabular-nums"
-                  style={{ textShadow: '0 0 24px rgba(232, 197, 106, 0.3)' }}
+                  className="text-3xl md:text-4xl font-bold text-gold-light tabular-nums leading-none"
+                  style={{ textShadow: '0 0 20px rgba(232, 197, 106, 0.2)' }}
                 >
                   {pot}
                 </motion.div>
                 {remainingDeckCount !== null && (
-                  <div className="text-white/20 text-[10px] mt-2 tabular-nums">
+                  <div className="text-white/12 text-[9px] mt-3 tabular-nums tracking-wide">
                     余牌 {remainingDeckCount}
                   </div>
                 )}
-                {/* Subtle divider line */}
-                <div className="w-8 h-px bg-white/8 mt-2" />
               </motion.div>
             )}
 
             {phase === PHASE.WAITING && (
               <div className="text-center px-4">
-                <div className="text-2xl md:text-3xl font-bold text-white/15 mb-1.5">抚州32张</div>
-                <div className="text-sm text-white/10">
+                <div className="text-2xl md:text-3xl font-bold text-white/[0.18] mb-2 tracking-tight">抚州32张</div>
+                <div className="text-[13px] text-white/[0.1]">
                   {displayPlayers.length} 位玩家
                 </div>
               </div>
@@ -147,7 +146,7 @@ export default function GameBoard() {
       {/* My hand */}
       {!isDealing && phase !== PHASE.WAITING && myPlayer && !isSpectator && (
         <div
-          className="absolute left-1/2 flex gap-2 justify-center items-center z-[5]"
+          className="absolute left-1/2 flex gap-2.5 justify-center items-center z-[5]"
           style={{ top: '75%', transform: 'translate(-50%, -50%)' }}
         >
           {myPlayer.hand && myPlayer.hand.length === 2 ? (
@@ -186,16 +185,16 @@ export default function GameBoard() {
       <GameLog />
 
       {/* Top bar */}
-      <div className="absolute top-0 left-0 right-0 safe-top flex items-center justify-center gap-3 px-3 pt-2.5 md:px-5 md:pt-3 z-10">
+      <div className="absolute top-0 left-0 right-0 safe-top flex items-center justify-center gap-2 px-4 pt-2.5 md:px-5 md:pt-3 z-10">
         {/* Status pill */}
-        <div className="glass-dark rounded-full px-2.5 py-1 flex items-center gap-1.5">
+        <div className="glass-dark rounded-full px-3 py-1.5 h-7 flex items-center gap-2">
           <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
             isDealing ? 'bg-blue-400 animate-pulse' :
             phase === PHASE.BETTING ? 'bg-accent animate-pulse' :
             phase === PHASE.SETTLEMENT ? 'bg-warn' :
             'bg-txt-muted'
           }`} />
-          <span className="text-txt-muted text-[10px]">
+          <span className="text-txt-muted text-[11px]">
             {phase === PHASE.WAITING && '等待'}
             {phase === PHASE.DEALING && '发牌'}
             {phase === PHASE.BETTING && '下注'}
@@ -203,7 +202,7 @@ export default function GameBoard() {
             {phase === PHASE.SETTLEMENT && '结算'}
           </span>
           {!connected && (
-            <span className="text-danger text-[10px] animate-pulse">
+            <span className="text-danger text-[10px] animate-pulse ml-0.5">
               {connectionState === 'reconnecting' ? '重连' : '断线'}
             </span>
           )}
@@ -213,9 +212,9 @@ export default function GameBoard() {
         {roomState.roomId && (
           <button
             onClick={handleCopyRoomId}
-            className="glass-dark rounded-full px-3 py-1 flex items-center gap-1.5 hover:bg-white/5 transition-colors"
+            className="glass-dark rounded-full px-3 py-1.5 h-7 flex items-center gap-2 hover:bg-white/[0.04] transition-colors"
           >
-            <span className="text-gold font-mono font-bold text-xs tracking-widest">{roomState.roomId}</span>
+            <span className="text-gold font-mono font-bold text-[12px] tracking-widest">{roomState.roomId}</span>
             <span className="text-txt-muted text-[10px]">{copied ? '已复制' : '复制'}</span>
           </button>
         )}
@@ -224,17 +223,17 @@ export default function GameBoard() {
       {/* Spectator */}
       {isSpectator && (
         <div className="absolute top-14 md:top-14 left-1/2 -translate-x-1/2 z-10">
-          <div className="glass-dark rounded-full text-blue-400 text-[11px] font-medium px-3.5 py-1.5">
+          <div className="glass-dark rounded-full text-blue-400 text-[11px] font-medium px-4 py-1.5">
             旁观中 · 下一局自动加入
           </div>
         </div>
       )}
 
       {/* Bottom buttons */}
-      <div className="absolute left-2 right-2 bottom-2 safe-bottom flex items-end justify-between z-10">
+      <div className="absolute left-3 right-3 bottom-3 safe-bottom flex items-end justify-between z-10">
         <button
           onClick={actions.leaveRoom}
-          className="glass-dark rounded-full px-3 py-1.5 text-txt-muted hover:text-txt-secondary text-[11px] transition-colors min-h-[32px]"
+          className="glass-dark rounded-full px-3.5 py-1.5 text-txt-muted hover:text-txt-secondary text-[11px] transition-colors min-h-[32px]"
         >
           离开
         </button>
@@ -249,29 +248,30 @@ export default function GameBoard() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 6, scale: 0.95 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute bottom-full mb-2 right-0 glass rounded-xl p-3 z-30 w-[180px]"
+                  className="absolute bottom-full mb-2.5 right-0 glass rounded-2xl p-4 z-30 w-[200px]"
                 >
-                  <div className="text-[10px] text-txt-muted mb-2">借入金额（上限 10000）</div>
+                  <div className="text-[11px] text-txt-secondary font-medium mb-3">借入金额</div>
                   <input
                     type="number"
                     min="1"
                     max="10000"
                     value={borrowAmount}
                     onChange={e => setBorrowAmount(e.target.value)}
-                    placeholder="输入金额"
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-[12px] text-txt outline-none focus:border-accent/50 tabular-nums mb-2"
+                    placeholder="1 ~ 10000"
+                    className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 text-[13px] text-txt outline-none focus:border-accent/40 focus:bg-white/[0.06] tabular-nums mb-3 transition-all"
                   />
-                  <div className="flex gap-1.5">
+                  <div className="flex gap-2">
                     {[100, 500, 1000].map(v => (
                       <button
                         key={v}
                         onClick={() => setBorrowAmount(String(v))}
-                        className="flex-1 text-[10px] py-1 rounded-md bg-white/5 text-txt-secondary hover:bg-white/10 transition-colors"
+                        className="flex-1 text-[11px] py-1.5 rounded-lg bg-white/[0.04] text-txt-secondary hover:bg-white/[0.08] transition-colors font-medium"
                       >
                         {v}
                       </button>
                     ))}
                   </div>
+                  <div className="h-px bg-white/[0.06] my-3" />
                   <button
                     onClick={() => {
                       const amt = parseInt(borrowAmount)
@@ -281,7 +281,11 @@ export default function GameBoard() {
                         setShowBorrow(false)
                       }
                     }}
-                    className="w-full mt-2 py-1.5 rounded-lg bg-accent/80 text-surface text-[12px] font-semibold hover:bg-accent transition-colors"
+                    className="w-full py-2 rounded-xl text-[13px] font-semibold transition-colors"
+                    style={{
+                      background: 'linear-gradient(135deg, #34d399, #2ab885)',
+                      color: '#0e1012',
+                    }}
                   >
                     确认借入
                   </button>
@@ -290,7 +294,7 @@ export default function GameBoard() {
             </AnimatePresence>
             <button
               onClick={() => setShowBorrow(!showBorrow)}
-              className="glass-dark rounded-full px-3 py-1.5 text-txt-muted hover:text-txt-secondary text-[11px] transition-colors min-h-[32px]"
+              className="glass-dark rounded-full px-3.5 py-1.5 text-txt-muted hover:text-txt-secondary text-[11px] transition-colors min-h-[32px]"
             >
               借钱
             </button>
